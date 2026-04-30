@@ -1,0 +1,13 @@
+bin/
+obj/
+.vs/
+.vscode/
+
+# Local .NET CLI state kept inside the repo for sandbox-safe commands.
+.dotnet/
+.nuget/
+.template-hive/
+
+# User-specific files
+*.user
+*.suo
