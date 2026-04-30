@@ -873,23 +873,29 @@
                             <TextBlock Foreground="{StaticResource TextSecondaryBrush}"
                                        Text="&#x0422;&#x044F;&#x043D;&#x0438;&#x0442;&#x0435; &#x0441;&#x043E;&#x0431;&#x044B;&#x0442;&#x0438;&#x0435;, &#x0447;&#x0442;&#x043E;&#x0431;&#x044B; &#x043F;&#x0435;&#x0440;&#x0435;&#x043D;&#x0435;&#x0441;&#x0442;&#x0438; &#x0435;&#x0433;&#x043E; &#x043F;&#x043E; &#x0432;&#x0440;&#x0435;&#x043C;&#x0435;&#x043D;&#x0438;. &#x041D;&#x0430; &#x043F;&#x0443;&#x0441;&#x0442;&#x043E;&#x043C; &#x043C;&#x0435;&#x0441;&#x0442;&#x0435; &#x043C;&#x043E;&#x0436;&#x043D;&#x043E; &#x0437;&#x0430;&#x0436;&#x0430;&#x0442;&#x044C; &#x043C;&#x044B;&#x0448;&#x044C; &#x0438; &#x043F;&#x0440;&#x043E;&#x0442;&#x044F;&#x043D;&#x0443;&#x0442;&#x044C; &#x0432;&#x043D;&#x0438;&#x0437;, &#x0447;&#x0442;&#x043E;&#x0431;&#x044B; &#x0441;&#x043E;&#x0437;&#x0434;&#x0430;&#x0442;&#x044C; &#x0447;&#x0435;&#x0440;&#x043D;&#x043E;&#x0432;&#x0438;&#x043A; &#x043D;&#x043E;&#x0432;&#x043E;&#x0433;&#x043E; &#x0441;&#x043E;&#x0431;&#x044B;&#x0442;&#x0438;&#x044F;." />
 
-                            <Grid Grid.Row="2">
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto" />
-                                    <RowDefinition Height="12" />
-                                    <RowDefinition Height="*" />
-                                </Grid.RowDefinitions>
-
-                                <Grid Grid.Row="0">
+                            <ScrollViewer Grid.Row="2"
+                                          VerticalScrollBarVisibility="Auto"
+                                          HorizontalScrollBarVisibility="Disabled">
+                                <ScrollViewer.Resources>
+                                    <Style TargetType="ScrollBar" BasedOn="{StaticResource AppScrollBarStyle}" />
+                                </ScrollViewer.Resources>
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="12" />
+                                        <RowDefinition Height="*" />
+                                    </Grid.RowDefinitions>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="64" />
                                         <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
 
-                                    <Border Grid.Column="0"
+                                    <Border Grid.Row="0"
+                                            Grid.Column="0"
                                             Margin="0,0,8,0" />
 
-                                    <ItemsControl Grid.Column="1"
+                                    <ItemsControl Grid.Row="0"
+                                                  Grid.Column="1"
                                                   x:Name="WeekHeadersItemsControl"
                                                   ItemTemplate="{StaticResource WeekHeaderTemplate}">
                                         <ItemsControl.ItemsPanel>
@@ -898,25 +904,14 @@
                                             </ItemsPanelTemplate>
                                         </ItemsControl.ItemsPanel>
                                     </ItemsControl>
-                                </Grid>
-
-                                <ScrollViewer Grid.Row="2"
-                                              VerticalScrollBarVisibility="Auto"
-                                              HorizontalScrollBarVisibility="Disabled">
-                                <ScrollViewer.Resources>
-                                    <Style TargetType="ScrollBar" BasedOn="{StaticResource AppScrollBarStyle}" />
-                                </ScrollViewer.Resources>
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="64" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
 
                                     <ItemsControl x:Name="WeekHoursItemsControl"
+                                                  Grid.Row="2"
                                                   Grid.Column="0"
                                                   ItemTemplate="{StaticResource TimelineHourTemplate}" />
 
-                                    <Grid Grid.Column="1">
+                                    <Grid Grid.Row="2"
+                                          Grid.Column="1">
                                         <ItemsControl x:Name="WeekBodiesItemsControl">
                                             <ItemsControl.ItemsPanel>
                                                 <ItemsPanelTemplate>
@@ -1004,7 +999,6 @@
                                     </Grid>
                                 </Grid>
                             </ScrollViewer>
-                            </Grid>
                         </Grid>
                     </Border>
 
