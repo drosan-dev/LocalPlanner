@@ -12,6 +12,7 @@
         MinWidth="1180"
         MinHeight="720"
         Background="#FF0B1220"
+        PreviewKeyDown="Window_OnPreviewKeyDown"
         WindowStartupLocation="CenterScreen">
     <Window.Resources>
         <SolidColorBrush x:Key="WindowBackgroundBrush" Color="#FF0B1220" />
@@ -631,6 +632,131 @@
             </DataTemplate.Triggers>
         </DataTemplate>
 
+        <DataTemplate x:Key="MonthHeaderTemplate" DataType="{x:Type vm:MonthHeaderViewModel}">
+            <Border Margin="4,0,4,8"
+                    Padding="10,0">
+                <TextBlock HorizontalAlignment="Left"
+                           Foreground="{StaticResource TextSecondaryBrush}"
+                           FontSize="12"
+                           FontWeight="SemiBold"
+                           Text="{Binding Label}" />
+            </Border>
+        </DataTemplate>
+
+        <DataTemplate x:Key="MonthEventChipTemplate" DataType="{x:Type vm:MonthEventChipViewModel}">
+            <Button Margin="0,2,0,0"
+                    Padding="0"
+                    HorizontalContentAlignment="Stretch"
+                    Background="{Binding AccentSurfaceBrush}"
+                    BorderBrush="{Binding AccentBorderBrush}"
+                    BorderThickness="1"
+                    Click="MonthEventChip_OnClick"
+                    PreviewMouseLeftButtonDown="MonthEvent_OnPreviewMouseLeftButtonDown"
+                    PreviewMouseMove="MonthEvent_OnPreviewMouseMove"
+                    Style="{StaticResource FlatChromeButtonStyle}"
+                    FocusVisualStyle="{x:Null}"
+                    Tag="{Binding Id}">
+                <Border Padding="6,3"
+                        Background="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=Background}"
+                        BorderBrush="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=BorderBrush}"
+                        BorderThickness="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=BorderThickness}"
+                        CornerRadius="8">
+                    <DockPanel LastChildFill="True">
+                        <Ellipse DockPanel.Dock="Left"
+                                 Width="6"
+                                 Height="6"
+                                 Margin="0,0,5,0"
+                                 VerticalAlignment="Center"
+                                 Fill="{Binding AccentBrush}" />
+                        <TextBlock Foreground="{StaticResource TextPrimaryBrush}"
+                                   FontSize="11"
+                                   Text="{Binding DisplayText}"
+                                   TextTrimming="CharacterEllipsis" />
+                    </DockPanel>
+                </Border>
+            </Button>
+        </DataTemplate>
+
+        <DataTemplate x:Key="MonthEventBarTemplate" DataType="{x:Type vm:MonthEventBarViewModel}">
+            <Button Margin="{Binding Margin}"
+                    Padding="0"
+                    HorizontalContentAlignment="Stretch"
+                    Background="{Binding AccentSurfaceBrush}"
+                    BorderBrush="{Binding AccentBorderBrush}"
+                    BorderThickness="1"
+                    Click="MonthEventChip_OnClick"
+                    PreviewMouseLeftButtonDown="MonthEvent_OnPreviewMouseLeftButtonDown"
+                    PreviewMouseMove="MonthEvent_OnPreviewMouseMove"
+                    Style="{StaticResource FlatChromeButtonStyle}"
+                    FocusVisualStyle="{x:Null}"
+                    Tag="{Binding Id}"
+                    Visibility="{Binding Visibility}">
+                <Border MinHeight="24"
+                        Padding="7,3"
+                        Background="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=Background}"
+                        BorderBrush="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=BorderBrush}"
+                        BorderThickness="{Binding RelativeSource={RelativeSource AncestorType=Button}, Path=BorderThickness}"
+                        CornerRadius="{Binding CornerRadius}">
+                    <TextBlock Foreground="{StaticResource TextPrimaryBrush}"
+                               FontSize="11"
+                               FontWeight="SemiBold"
+                               Text="{Binding DisplayText}"
+                               TextTrimming="CharacterEllipsis" />
+                </Border>
+            </Button>
+        </DataTemplate>
+
+        <DataTemplate x:Key="MonthCellTemplate" DataType="{x:Type vm:MonthDayCellViewModel}">
+            <Border Margin="4"
+                    Padding="8"
+                    Background="{Binding SurfaceBrush}"
+                    BorderBrush="{Binding BorderBrush}"
+                    BorderThickness="{Binding BorderThickness}"
+                    CornerRadius="14"
+                    Cursor="Hand"
+                    MouseLeftButtonDown="MonthCell_OnMouseLeftButtonDown"
+                    MouseLeftButtonUp="MonthCell_OnMouseLeftButtonUp"
+                    MouseEnter="MonthCell_OnMouseEnter"
+                    AllowDrop="True"
+                    DragOver="MonthCell_OnDragOver"
+                    Drop="MonthCell_OnDrop">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0"
+                               Foreground="{Binding DayNumberBrush}"
+                               FontSize="14"
+                               FontWeight="{Binding DayNumberWeight}"
+                               Text="{Binding DayNumberLabel}" />
+
+                    <StackPanel Grid.Row="1"
+                                Margin="0,6,0,0">
+                        <ItemsControl ItemTemplate="{StaticResource MonthEventBarTemplate}"
+                                      ItemsSource="{Binding EventBars}" />
+                        <ItemsControl ItemTemplate="{StaticResource MonthEventChipTemplate}"
+                                      ItemsSource="{Binding VisibleChips}" />
+                    </StackPanel>
+
+                    <Button Grid.Row="2"
+                            Margin="0,4,0,0"
+                            Padding="0"
+                            HorizontalAlignment="Left"
+                            Foreground="{StaticResource AccentBrush}"
+                            FontSize="11"
+                            FontWeight="SemiBold"
+                            Style="{StaticResource FlatChromeButtonStyle}"
+                            Content="{Binding OverflowLabel}"
+                            Visibility="{Binding OverflowVisibility}"
+                            Click="MonthOverflowButton_OnClick"
+                            Tag="{Binding Date}" />
+                </Grid>
+            </Border>
+        </DataTemplate>
+
         <DataTemplate x:Key="TimelineEventTemplate" DataType="{x:Type vm:TimeGridEventViewModel}">
             <Grid Width="{Binding RelativeSource={RelativeSource AncestorType=Canvas}, Path=ActualWidth}"
                   Height="{Binding Height}">
@@ -869,12 +995,42 @@
                             BorderBrush="{StaticResource BorderBrushStrong}"
                             BorderThickness="1"
                             CornerRadius="18">
-                        <Calendar x:Name="MonthCalendar"
-                                  Background="Transparent"
-                                  BorderThickness="0"
-                                  Loaded="Calendar_OnLoaded"
-                                  SelectedDatesChanged="MonthCalendar_OnSelectedDatesChanged"
-                                  DisplayDateChanged="MonthCalendar_OnDisplayDateChanged" />
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+
+                            <Calendar x:Name="MonthCalendar"
+                                      Height="0"
+                                      Background="Transparent"
+                                      BorderThickness="0"
+                                      Loaded="Calendar_OnLoaded"
+                                      SelectedDatesChanged="MonthCalendar_OnSelectedDatesChanged"
+                                      DisplayDateChanged="MonthCalendar_OnDisplayDateChanged"
+                                      Visibility="Collapsed" />
+
+                            <ItemsControl x:Name="MonthHeadersItemsControl"
+                                          Grid.Row="0"
+                                          ItemTemplate="{StaticResource MonthHeaderTemplate}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <UniformGrid Columns="7" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                            </ItemsControl>
+
+                            <ItemsControl x:Name="MonthCellsItemsControl"
+                                          Grid.Row="1"
+                                          ItemTemplate="{StaticResource MonthCellTemplate}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <UniformGrid Columns="7"
+                                                     Rows="6" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                            </ItemsControl>
+                        </Grid>
                     </Border>
 
                     <Border x:Name="WeekViewContainer"

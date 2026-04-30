@@ -7,7 +7,14 @@ obj/
 .dotnet/
 .nuget/
 .template-hive/
+.codex-scratch/
+.codex-obj/
+.codex-verify/
+**/.codex-verify/
 
 # User-specific files
 *.user
 *.suo
+
+# WPF markup compiler temp projects (can be locked by Visual Studio/designer)
+*_wpftmp.csproj

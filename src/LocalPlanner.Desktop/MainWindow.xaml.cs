@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Linq;
+using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -29,6 +30,8 @@ public partial class MainWindow : Window
     private readonly ObservableCollection<EventListItemViewModel> _allEvents = new();
     private readonly ObservableCollection<EventListItemViewModel> _selectedDayEvents = new();
     private readonly ObservableCollection<WeekDayColumnViewModel> _selectedWeekDays = new();
+    private readonly ObservableCollection<MonthHeaderViewModel> _monthHeaders = new();
+    private readonly ObservableCollection<MonthDayCellViewModel> _monthCells = new();
     private readonly ObservableCollection<TimeSlotViewModel> _timeSlots = new();
     private readonly ObservableCollection<TimeGridEventViewModel> _selectedDayTimelineEvents = new();
 
@@ -40,6 +43,11 @@ public partial class MainWindow : Window
     private Point? _lastTimelinePointerPosition;
     private CalendarViewMode _viewMode = CalendarViewMode.Month;
     private TimelineInteractionState? _activeTimelineInteraction;
+    private Guid? _pendingMonthDragEventId;
+    private Point? _pendingMonthDragStartPoint;
+    private bool _suppressMonthEventClick;
+    private DateTime? _activeMonthRangeStart;
+    private DateTime? _activeMonthRangeEnd;
     private Brush? _draftPreviewAccentBrush;
     private Brush? _draftPreviewSurfaceBrush;
     private Brush? _draftPreviewBorderBrush;
@@ -57,6 +65,8 @@ public partial class MainWindow : Window
         }
 
         DailyEventsListBox.ItemsSource = _selectedDayEvents;
+        MonthHeadersItemsControl.ItemsSource = _monthHeaders;
+        MonthCellsItemsControl.ItemsSource = _monthCells;
         WeekHeadersItemsControl.ItemsSource = _selectedWeekDays;
         WeekBodiesItemsControl.ItemsSource = _selectedWeekDays;
         WeekHoursItemsControl.ItemsSource = _timeSlots;
@@ -66,6 +76,7 @@ public partial class MainWindow : Window
         TimezoneComboBox.ItemsSource = TimeZoneInfo.GetSystemTimeZones();
         TimezoneComboBox.SelectedItem = TimeZoneInfo.Local;
         MonthViewRadioButton.IsChecked = true;
+        SeedMonthHeaders();
 
         SeedEditorDefaults();
         SetSelectedDate(DateTime.Today, prepareQuickCreate: false);
@@ -84,6 +95,7 @@ public partial class MainWindow : Window
 
         RefreshSelectedDayEvents();
         RefreshSelectedWeekDays();
+        RefreshMonthGrid();
         RefreshCalendarChrome();
         RefreshCalendarMarkers();
 
@@ -185,6 +197,7 @@ public partial class MainWindow : Window
 
     private void MonthCalendar_OnDisplayDateChanged(object? sender, CalendarDateChangedEventArgs e)
     {
+        RefreshMonthGrid();
         RefreshCalendarChrome();
         RefreshCalendarMarkers();
     }
@@ -228,9 +241,385 @@ public partial class MainWindow : Window
         DayViewRadioButton.IsChecked = true;
     }
 
+    private void MonthCell_OnMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.OriginalSource is DependencyObject source && FindVisualAncestor<Button>(source) is not null)
+        {
+            return;
+        }
+
+        if (sender is not Border { DataContext: MonthDayCellViewModel cell })
+        {
+            return;
+        }
+
+        _activeMonthRangeStart = cell.Date;
+        _activeMonthRangeEnd = cell.Date;
+        SetSelectedDate(cell.Date, prepareQuickCreate: false);
+
+        if (e.ClickCount >= 2)
+        {
+            _activeMonthRangeStart = null;
+            _activeMonthRangeEnd = null;
+            SetViewMode(CalendarViewMode.Day);
+            DayViewRadioButton.IsChecked = true;
+        }
+
+        e.Handled = true;
+    }
+
+    private void MonthCell_OnMouseEnter(object sender, MouseEventArgs e)
+    {
+        if (_activeMonthRangeStart is null || e.LeftButton != MouseButtonState.Pressed)
+        {
+            return;
+        }
+
+        if (sender is Border { DataContext: MonthDayCellViewModel cell })
+        {
+            _activeMonthRangeEnd = cell.Date;
+            StatusTextBlock.Text = BuildMonthRangeDraftStatus(_activeMonthRangeStart.Value, cell.Date);
+        }
+    }
+
+    private void MonthCell_OnMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (_activeMonthRangeStart is null)
+        {
+            return;
+        }
+
+        var start = _activeMonthRangeStart.Value;
+        var end = _activeMonthRangeEnd ?? start;
+        _activeMonthRangeStart = null;
+        _activeMonthRangeEnd = null;
+
+        if (start == end)
+        {
+            return;
+        }
+
+        CreateAllDayMonthRange(start, end);
+        e.Handled = true;
+    }
+
+    private void MonthCell_OnDragOver(object sender, DragEventArgs e)
+    {
+        e.Effects = TryGetDraggedMonthEventId(e, out _) ? DragDropEffects.Move : DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    private void MonthCell_OnDrop(object sender, DragEventArgs e)
+    {
+        if (!TryGetDraggedMonthEventId(e, out var eventId) ||
+            sender is not Border { DataContext: MonthDayCellViewModel cell })
+        {
+            return;
+        }
+
+        MoveMonthEventToDate(eventId, cell.Date);
+        e.Handled = true;
+    }
+
+    private void MonthOverflowButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button button)
+        {
+            return;
+        }
+
+        if (button.Tag is not DateTime date)
+        {
+            var fallback = (button.DataContext as MonthDayCellViewModel)?.Date;
+            if (fallback is null)
+            {
+                return;
+            }
+
+            date = fallback.Value;
+        }
+
+        SetSelectedDate(date, prepareQuickCreate: false);
+        SetViewMode(CalendarViewMode.Day);
+        DayViewRadioButton.IsChecked = true;
+        e.Handled = true;
+    }
+
+    private void MonthEventChip_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (_suppressMonthEventClick)
+        {
+            _suppressMonthEventClick = false;
+            e.Handled = true;
+            return;
+        }
+
+        if (sender is not Button button)
+        {
+            return;
+        }
+
+        if (button.Tag is Guid eventId)
+        {
+            SelectEvent(eventId);
+            e.Handled = true;
+            return;
+        }
+
+        if (button.DataContext is MonthEventChipViewModel chip)
+        {
+            SelectEvent(chip.Id);
+            e.Handled = true;
+            return;
+        }
+
+        if (button.DataContext is MonthEventBarViewModel bar)
+        {
+            SelectEvent(bar.Id);
+            e.Handled = true;
+        }
+    }
+
+    private void MonthEvent_OnPreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is Button { Tag: Guid eventId })
+        {
+            _pendingMonthDragEventId = eventId;
+            _pendingMonthDragStartPoint = e.GetPosition(this);
+        }
+    }
+
+    private void MonthEvent_OnPreviewMouseMove(object sender, MouseEventArgs e)
+    {
+        if (_pendingMonthDragEventId is not { } eventId ||
+            _pendingMonthDragStartPoint is not { } startPoint ||
+            e.LeftButton != MouseButtonState.Pressed)
+        {
+            return;
+        }
+
+        var current = e.GetPosition(this);
+        var distanceX = Math.Abs(current.X - startPoint.X);
+        var distanceY = Math.Abs(current.Y - startPoint.Y);
+        if (distanceX < SystemParameters.MinimumHorizontalDragDistance &&
+            distanceY < SystemParameters.MinimumVerticalDragDistance)
+        {
+            return;
+        }
+
+        _activeMonthRangeStart = null;
+        _activeMonthRangeEnd = null;
+        _pendingMonthDragEventId = null;
+        _pendingMonthDragStartPoint = null;
+        _suppressMonthEventClick = true;
+        DragDrop.DoDragDrop((DependencyObject)sender, eventId.ToString(), DragDropEffects.Move);
+        Dispatcher.BeginInvoke(() => _suppressMonthEventClick = false, DispatcherPriority.ContextIdle);
+        e.Handled = true;
+    }
+
+    private static bool TryGetDraggedMonthEventId(DragEventArgs e, out Guid eventId)
+    {
+        eventId = Guid.Empty;
+        return e.Data.GetData(DataFormats.StringFormat) is string value && Guid.TryParse(value, out eventId);
+    }
+
+    private void MoveMonthEventToDate(Guid eventId, DateTime targetDate)
+    {
+        if (_allEvents.FirstOrDefault(item => item.Id == eventId) is not { } existing)
+        {
+            return;
+        }
+
+        var duration = existing.EndsAtLocal - existing.StartsAtLocal;
+        if (duration <= TimeSpan.Zero)
+        {
+            duration = existing.IsAllDay ? TimeSpan.FromDays(1) : TimeSpan.FromMinutes(MinimumDurationMinutes);
+        }
+
+        var nextStart = existing.IsAllDay
+            ? targetDate.Date
+            : targetDate.Date.Add(existing.StartsAtLocal.TimeOfDay);
+        var nextEnd = nextStart.Add(duration);
+
+        try
+        {
+            var updated = _eventRepository.Save(new EventEditorState
+            {
+                Id = existing.Id,
+                Title = existing.Title,
+                Description = existing.Description,
+                StartLocal = nextStart,
+                EndLocal = nextEnd,
+                TimezoneId = existing.TimezoneId,
+                IsAllDay = existing.IsAllDay,
+                RRuleText = existing.RRuleText
+            });
+
+            LoadEvents();
+            SelectEvent(updated.Id);
+            StatusTextBlock.Text = $"\u0421\u043E\u0431\u044B\u0442\u0438\u0435 \u00AB{updated.Title}\u00BB \u043F\u0435\u0440\u0435\u043D\u0435\u0441\u0435\u043D\u043E \u043D\u0430 {targetDate.ToString("d MMMM", RussianCulture)}.";
+        }
+        catch (Exception exception)
+        {
+            StatusTextBlock.Text = exception.Message;
+            LoadEvents();
+        }
+    }
+
+    private void CreateAllDayMonthRange(DateTime firstDate, DateTime secondDate)
+    {
+        var start = firstDate <= secondDate ? firstDate.Date : secondDate.Date;
+        var inclusiveEnd = firstDate <= secondDate ? secondDate.Date : firstDate.Date;
+        var end = inclusiveEnd.AddDays(1);
+
+        try
+        {
+            var timezone = TimezoneComboBox.SelectedItem as TimeZoneInfo ?? TimeZoneInfo.Local;
+            var created = _eventRepository.Save(new EventEditorState
+            {
+                Id = null,
+                Title = NewEventDefaultTitle,
+                Description = string.Empty,
+                StartLocal = start,
+                EndLocal = end,
+                TimezoneId = timezone.Id,
+                IsAllDay = true,
+                RRuleText = string.Empty
+            });
+
+            LoadEvents();
+            SelectEvent(created.Id);
+            StatusTextBlock.Text = $"\u0421\u043E\u0437\u0434\u0430\u043D\u043E \u0441\u043E\u0431\u044B\u0442\u0438\u0435 \u043D\u0430 {BuildMonthRangeLabel(start, inclusiveEnd)}.";
+        }
+        catch (Exception exception)
+        {
+            ApplyAllDayRangeDraft(start, end, exception.Message);
+        }
+    }
+
+    private void ApplyAllDayRangeDraft(DateTime start, DateTime end, string statusMessage)
+    {
+        ApplyDraftEditorState(start, end, statusMessage);
+        StartTimeTextBox.Text = "00:00";
+        EndTimeTextBox.Text = "00:00";
+        AllDayCheckBox.IsChecked = true;
+    }
+
+    private static string BuildMonthRangeDraftStatus(DateTime firstDate, DateTime secondDate)
+    {
+        var start = firstDate <= secondDate ? firstDate.Date : secondDate.Date;
+        var end = firstDate <= secondDate ? secondDate.Date : firstDate.Date;
+        return $"\u041D\u043E\u0432\u043E\u0435 \u0441\u043E\u0431\u044B\u0442\u0438\u0435: {BuildMonthRangeLabel(start, end)}.";
+    }
+
+    private static string BuildMonthRangeLabel(DateTime start, DateTime inclusiveEnd)
+    {
+        return start == inclusiveEnd
+            ? start.ToString("d MMMM", RussianCulture)
+            : $"{start.ToString("d MMM", RussianCulture)} - {inclusiveEnd.ToString("d MMMM", RussianCulture)}";
+    }
+
     private void TodayButton_OnClick(object sender, RoutedEventArgs e)
     {
         SetSelectedDate(DateTime.Today, prepareQuickCreate: false);
+    }
+
+    private void Window_OnPreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (Keyboard.FocusedElement is DependencyObject focused &&
+            (FindVisualAncestor<TextBoxBase>(focused) is not null ||
+             FindVisualAncestor<ComboBox>(focused) is not null ||
+             FindVisualAncestor<DatePicker>(focused) is not null))
+        {
+            return;
+        }
+
+        if ((Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
+        {
+            switch (e.Key)
+            {
+                case Key.D1:
+                    DayViewRadioButton.IsChecked = true;
+                    e.Handled = true;
+                    return;
+                case Key.D2:
+                    WeekViewRadioButton.IsChecked = true;
+                    e.Handled = true;
+                    return;
+                case Key.D3:
+                    MonthViewRadioButton.IsChecked = true;
+                    e.Handled = true;
+                    return;
+            }
+        }
+
+        if (e.Key == Key.T)
+        {
+            SetSelectedDate(DateTime.Today, prepareQuickCreate: false);
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key == Key.N)
+        {
+            var selectedDate = MonthCalendar.SelectedDate?.Date ?? DateTime.Today;
+            PrepareQuickCreateForDate(selectedDate, $"\u0417\u0430\u043F\u043E\u043B\u043D\u0438\u0442\u0435 \u0444\u043E\u0440\u043C\u0443 \u043D\u043E\u0432\u043E\u0433\u043E \u0441\u043E\u0431\u044B\u0442\u0438\u044F \u043D\u0430 {selectedDate.ToString("d MMMM", RussianCulture)}.");
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key == Key.Escape && EditorPanelBorder.Visibility == Visibility.Visible)
+        {
+            CloseEditor();
+            e.Handled = true;
+            return;
+        }
+
+        if (_viewMode != CalendarViewMode.Month)
+        {
+            return;
+        }
+
+        var date = MonthCalendar.SelectedDate?.Date ?? DateTime.Today;
+        var moved = false;
+
+        switch (e.Key)
+        {
+            case Key.Left:
+                date = date.AddDays(-1);
+                moved = true;
+                break;
+            case Key.Right:
+                date = date.AddDays(1);
+                moved = true;
+                break;
+            case Key.Up:
+                date = date.AddDays(-7);
+                moved = true;
+                break;
+            case Key.Down:
+                date = date.AddDays(7);
+                moved = true;
+                break;
+            case Key.PageUp:
+                NavigateRange(-1);
+                e.Handled = true;
+                return;
+            case Key.PageDown:
+                NavigateRange(1);
+                e.Handled = true;
+                return;
+            case Key.Enter:
+                DayViewRadioButton.IsChecked = true;
+                e.Handled = true;
+                return;
+        }
+
+        if (moved)
+        {
+            SetSelectedDate(date, prepareQuickCreate: false);
+            e.Handled = true;
+        }
     }
 
     private void QuickCreateSelectedDateButton_OnClick(object sender, RoutedEventArgs e)
@@ -513,6 +902,7 @@ public partial class MainWindow : Window
 
         RefreshSelectedDayEvents();
         RefreshSelectedWeekDays();
+        RefreshMonthGrid();
         RefreshCalendarChrome();
         RefreshCalendarMarkers();
 
@@ -539,7 +929,7 @@ public partial class MainWindow : Window
         _selectedDayEvents.Clear();
 
         foreach (var item in _allEvents
-                     .Where(item => GetDisplayDay(item) == selectedDate)
+                     .Where(item => EventOccursOnDay(item, selectedDate))
                      .OrderBy(GetDisplayStart))
         {
             _selectedDayEvents.Add(item);
@@ -579,7 +969,7 @@ public partial class MainWindow : Window
         {
             var day = weekStart.AddDays(offset);
             var dayEvents = _allEvents
-                .Where(item => GetDisplayDay(item) == day)
+                .Where(item => EventOccursOnDay(item, day))
                 .OrderBy(GetDisplayStart)
                 .ToList();
 
@@ -621,7 +1011,228 @@ public partial class MainWindow : Window
     private void RefreshCalendarMarkers()
     {
         ApplyCalendarMarkers(MiniCalendar, compact: true);
-        ApplyCalendarMarkers(MonthCalendar, compact: false);
+    }
+
+    private void SeedMonthHeaders()
+    {
+        _monthHeaders.Clear();
+
+        var week = new[]
+        {
+            DayOfWeek.Monday,
+            DayOfWeek.Tuesday,
+            DayOfWeek.Wednesday,
+            DayOfWeek.Thursday,
+            DayOfWeek.Friday,
+            DayOfWeek.Saturday,
+            DayOfWeek.Sunday
+        };
+
+        foreach (var dayOfWeek in week)
+        {
+            _monthHeaders.Add(new MonthHeaderViewModel(dayOfWeek));
+        }
+    }
+
+    private void RefreshMonthGrid()
+    {
+        var selectedDate = MonthCalendar.SelectedDate?.Date ?? DateTime.Today;
+        var displayDate = MonthCalendar.DisplayDate.Date;
+        var firstOfMonth = new DateTime(displayDate.Year, displayDate.Month, 1);
+        var gridStart = StartOfWeek(firstOfMonth, DayOfWeek.Monday);
+        var eventBarsByDate = BuildMonthEventBarsByDate(gridStart);
+
+        _monthCells.Clear();
+
+        for (var index = 0; index < 42; index++)
+        {
+            var date = gridStart.AddDays(index).Date;
+            var dayEvents = _allEvents
+                .Where(item => EventOccursOnDay(item, date))
+                .OrderBy(item => item.IsAllDay ? 0 : 1)
+                .ThenBy(GetDisplayStart)
+                .ThenBy(item => item.Title, StringComparer.CurrentCultureIgnoreCase)
+                .ToList();
+            var eventBars = eventBarsByDate.TryGetValue(date, out var bars)
+                ? bars
+                : new List<MonthEventBarViewModel>();
+            var visibleChips = dayEvents
+                .Where(item => !IsMultiDayMonthEvent(item))
+                .Take(3)
+                .Select(item => new MonthEventChipViewModel(item, GetDisplayStart(item)))
+                .ToList();
+
+            var overflow = Math.Max(0, dayEvents.Count - eventBars.Count - visibleChips.Count);
+            var accessibilityLabel = BuildMonthCellAccessibilityLabel(date, dayEvents);
+
+            _monthCells.Add(new MonthDayCellViewModel(
+                date,
+                displayDate,
+                selectedDate,
+                isToday: date == DateTime.Today,
+                eventBars,
+                visibleChips,
+                overflow,
+                accessibilityLabel));
+        }
+    }
+
+    private static DateTime StartOfWeek(DateTime date, DayOfWeek weekStartsAt)
+    {
+        var offset = ((int)date.DayOfWeek - (int)weekStartsAt + 7) % 7;
+        return date.AddDays(-offset).Date;
+    }
+
+    private Dictionary<DateTime, List<MonthEventBarViewModel>> BuildMonthEventBarsByDate(DateTime gridStart)
+    {
+        var result = new Dictionary<DateTime, List<MonthEventBarViewModel>>();
+        for (var index = 0; index < 42; index++)
+        {
+            var date = gridStart.AddDays(index).Date;
+            result[date] = new List<MonthEventBarViewModel>();
+        }
+
+        var multiDayEvents = _allEvents
+            .Where(IsMultiDayMonthEvent)
+            .OrderBy(GetDisplayStart)
+            .ThenByDescending(item => (GetDisplayEnd(item) - GetDisplayStart(item)).TotalDays)
+            .ThenBy(item => item.Title, StringComparer.CurrentCultureIgnoreCase)
+            .ToList();
+
+        for (var week = 0; week < 6; week++)
+        {
+            var weekStart = gridStart.AddDays(week * 7).Date;
+            var weekEnd = weekStart.AddDays(6).Date;
+            var laneOccupancy = new List<bool[]>();
+            var laneEvents = new Dictionary<(int Lane, DateTime Date), MonthEventBarViewModel>();
+
+            foreach (var item in multiDayEvents)
+            {
+                var start = GetDisplayStart(item).Date;
+                var end = ResolveInclusiveMonthEnd(item);
+                if (end < weekStart || start > weekEnd)
+                {
+                    continue;
+                }
+
+                var segmentStart = start > weekStart ? start : weekStart;
+                var segmentEnd = end < weekEnd ? end : weekEnd;
+                var startIndex = (int)(segmentStart - weekStart).TotalDays;
+                var endIndex = (int)(segmentEnd - weekStart).TotalDays;
+                var lane = FindAvailableMonthLane(laneOccupancy, startIndex, endIndex);
+
+                for (var dayIndex = startIndex; dayIndex <= endIndex; dayIndex++)
+                {
+                    laneOccupancy[lane][dayIndex] = true;
+                    var date = weekStart.AddDays(dayIndex).Date;
+                    laneEvents[(lane, date)] = new MonthEventBarViewModel(item, date, segmentStart, segmentEnd);
+                }
+            }
+
+            for (var dayIndex = 0; dayIndex < 7; dayIndex++)
+            {
+                var date = weekStart.AddDays(dayIndex).Date;
+                if (!result.ContainsKey(date))
+                {
+                    continue;
+                }
+
+                for (var lane = 0; lane < laneOccupancy.Count; lane++)
+                {
+                    result[date].Add(laneEvents.TryGetValue((lane, date), out var bar)
+                        ? bar
+                        : MonthEventBarViewModel.Placeholder(date));
+                }
+            }
+        }
+
+        return result;
+    }
+
+    private static int FindAvailableMonthLane(List<bool[]> laneOccupancy, int startIndex, int endIndex)
+    {
+        for (var lane = 0; lane < laneOccupancy.Count; lane++)
+        {
+            var isAvailable = true;
+            for (var dayIndex = startIndex; dayIndex <= endIndex; dayIndex++)
+            {
+                if (!laneOccupancy[lane][dayIndex])
+                {
+                    continue;
+                }
+
+                isAvailable = false;
+                break;
+            }
+
+            if (isAvailable)
+            {
+                return lane;
+            }
+        }
+
+        laneOccupancy.Add(new bool[7]);
+        return laneOccupancy.Count - 1;
+    }
+
+    private DateTime ResolveInclusiveMonthEnd(EventListItemViewModel item)
+    {
+        var end = GetDisplayEnd(item);
+        if (item.IsAllDay && end.TimeOfDay == TimeSpan.Zero)
+        {
+            end = end.Date.AddDays(-1);
+        }
+
+        var start = GetDisplayStart(item).Date;
+        return end.Date < start ? start : end.Date;
+    }
+
+    private static T? FindVisualAncestor<T>(DependencyObject source) where T : DependencyObject
+    {
+        var current = source;
+        while (current is not null)
+        {
+            if (current is T match)
+            {
+                return match;
+            }
+
+            current = VisualTreeHelper.GetParent(current);
+        }
+
+        return null;
+    }
+
+    private static string BuildMonthCellAccessibilityLabel(DateTime date, IReadOnlyList<EventListItemViewModel> events)
+    {
+        var caption = date.ToString("d MMMM", RussianCulture);
+        if (events.Count == 0)
+        {
+            return $"{caption}: событий нет.";
+        }
+
+        var builder = new StringBuilder();
+        builder.Append(caption);
+        builder.Append(": ");
+
+        var limit = Math.Min(events.Count, 6);
+        for (var i = 0; i < limit; i++)
+        {
+            if (i > 0)
+            {
+                builder.Append(", ");
+            }
+
+            builder.Append(events[i].Title);
+        }
+
+        if (events.Count > limit)
+        {
+            builder.Append("…");
+        }
+
+        builder.Append('.');
+        return builder.ToString();
     }
 
     private void NavigateRange(int direction)
@@ -730,9 +1341,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        var eventsByDate = _allEvents
-            .GroupBy(item => item.Day)
-            .ToDictionary(group => group.Key, group => group.ToList());
+        var eventsByDate = BuildEventsByVisibleDate(_allEvents);
         var selectedDate = calendar.SelectedDate?.Date;
 
         calendar.Dispatcher.BeginInvoke(() =>
@@ -764,6 +1373,37 @@ public partial class MainWindow : Window
                     : $"{dayEvents.Count} \u0441\u043E\u0431\u044B\u0442\u0438\u044F";
             }
         }, DispatcherPriority.Loaded);
+    }
+
+    private Dictionary<DateTime, List<EventListItemViewModel>> BuildEventsByVisibleDate(IEnumerable<EventListItemViewModel> events)
+    {
+        var eventsByDate = new Dictionary<DateTime, List<EventListItemViewModel>>();
+        foreach (var item in events)
+        {
+            var start = GetDisplayStart(item).Date;
+            var end = GetDisplayEnd(item);
+            var inclusiveEnd = item.IsAllDay && end.TimeOfDay == TimeSpan.Zero
+                ? end.Date.AddDays(-1)
+                : end.Date;
+
+            if (inclusiveEnd < start)
+            {
+                inclusiveEnd = start;
+            }
+
+            for (var day = start; day <= inclusiveEnd; day = day.AddDays(1))
+            {
+                if (!eventsByDate.TryGetValue(day, out var dayEvents))
+                {
+                    dayEvents = new List<EventListItemViewModel>();
+                    eventsByDate[day] = dayEvents;
+                }
+
+                dayEvents.Add(item);
+            }
+        }
+
+        return eventsByDate;
     }
 
     private IReadOnlyList<TimeGridEventViewModel> BuildTimeGridEvents(DateTime day, IEnumerable<EventListItemViewModel> dayEvents)
@@ -1387,6 +2027,36 @@ public partial class MainWindow : Window
         return TryGetPreviewInteraction(item.Id, out var interaction)
             ? interaction.PreviewEnd
             : item.EndsAtLocal;
+    }
+
+    private bool EventOccursOnDay(EventListItemViewModel item, DateTime day)
+    {
+        var start = GetDisplayStart(item);
+        var end = GetDisplayEnd(item);
+        if (end <= start)
+        {
+            end = start.AddMinutes(MinimumDurationMinutes);
+        }
+
+        var dayStart = day.Date;
+        var dayEnd = dayStart.AddDays(1);
+        return start < dayEnd && end > dayStart;
+    }
+
+    private bool IsMultiDayMonthEvent(EventListItemViewModel item)
+    {
+        var start = GetDisplayStart(item);
+        var end = GetDisplayEnd(item);
+        if (end <= start)
+        {
+            return false;
+        }
+
+        var inclusiveEnd = item.IsAllDay && end.TimeOfDay == TimeSpan.Zero
+            ? end.Date.AddDays(-1)
+            : end.Date;
+
+        return inclusiveEnd > start.Date;
     }
 
     private bool TryGetPreviewInteraction(Guid eventId, out TimelineInteractionState interaction)
