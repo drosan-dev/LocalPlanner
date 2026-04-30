@@ -46,6 +46,23 @@
             <Setter Property="BorderThickness" Value="1" />
         </Style>
 
+        <Style x:Key="FlatChromeButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                          VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                          Margin="{TemplateBinding Padding}" />
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <Style TargetType="TextBox">
             <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
             <Setter Property="Background" Value="{StaticResource PanelElevatedBrush}" />
@@ -578,16 +595,15 @@
         </DataTemplate>
 
         <DataTemplate x:Key="WeekHeaderTemplate" DataType="{x:Type vm:WeekDayColumnViewModel}">
-            <Border Margin="6,0"
+            <Border x:Name="WeekHeaderBorder"
+                    Margin="6,0"
                     Padding="12,10"
                     Background="{Binding SurfaceBrush}"
                     BorderBrush="{Binding BorderBrush}"
                     BorderThickness="{Binding BorderThickness}"
-                    CornerRadius="14"
-                    ToolTip="{Binding AccessibilityLabel}">
+                    CornerRadius="14">
                 <Button Padding="0"
-                        Background="Transparent"
-                        BorderThickness="0"
+                        Style="{StaticResource FlatChromeButtonStyle}"
                         HorizontalContentAlignment="Left"
                         Foreground="{StaticResource TextPrimaryBrush}"
                         Click="WeekDayButton_OnClick"
@@ -608,6 +624,11 @@
                     </StackPanel>
                 </Button>
             </Border>
+            <DataTemplate.Triggers>
+                <Trigger SourceName="WeekHeaderBorder" Property="IsMouseOver" Value="True">
+                    <Setter TargetName="WeekHeaderBorder" Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                </Trigger>
+            </DataTemplate.Triggers>
         </DataTemplate>
 
         <DataTemplate x:Key="TimelineEventTemplate" DataType="{x:Type vm:TimeGridEventViewModel}">
@@ -802,7 +823,7 @@
                                    Text="Месяц" />
                         <TextBlock x:Name="CurrentRangeSubtitleTextBlock"
                                    Foreground="{StaticResource TextSecondaryBrush}"
-                                   Text="Обзор месяца и событий выбранного дня" />
+                                   Text="События выбранного дня" />
                     </StackPanel>
 
                     <Border Grid.Column="5"
@@ -869,9 +890,6 @@
                                 <RowDefinition Height="10" />
                                 <RowDefinition Height="*" />
                             </Grid.RowDefinitions>
-
-                            <TextBlock Foreground="{StaticResource TextSecondaryBrush}"
-                                       Text="&#x0422;&#x044F;&#x043D;&#x0438;&#x0442;&#x0435; &#x0441;&#x043E;&#x0431;&#x044B;&#x0442;&#x0438;&#x0435;, &#x0447;&#x0442;&#x043E;&#x0431;&#x044B; &#x043F;&#x0435;&#x0440;&#x0435;&#x043D;&#x0435;&#x0441;&#x0442;&#x0438; &#x0435;&#x0433;&#x043E; &#x043F;&#x043E; &#x0432;&#x0440;&#x0435;&#x043C;&#x0435;&#x043D;&#x0438;. &#x041D;&#x0430; &#x043F;&#x0443;&#x0441;&#x0442;&#x043E;&#x043C; &#x043C;&#x0435;&#x0441;&#x0442;&#x0435; &#x043C;&#x043E;&#x0436;&#x043D;&#x043E; &#x0437;&#x0430;&#x0436;&#x0430;&#x0442;&#x044C; &#x043C;&#x044B;&#x0448;&#x044C; &#x0438; &#x043F;&#x0440;&#x043E;&#x0442;&#x044F;&#x043D;&#x0443;&#x0442;&#x044C; &#x0432;&#x043D;&#x0438;&#x0437;, &#x0447;&#x0442;&#x043E;&#x0431;&#x044B; &#x0441;&#x043E;&#x0437;&#x0434;&#x0430;&#x0442;&#x044C; &#x0447;&#x0435;&#x0440;&#x043D;&#x043E;&#x0432;&#x0438;&#x043A; &#x043D;&#x043E;&#x0432;&#x043E;&#x0433;&#x043E; &#x0441;&#x043E;&#x0431;&#x044B;&#x0442;&#x0438;&#x044F;." />
 
                             <ScrollViewer Grid.Row="2"
                                           VerticalScrollBarVisibility="Auto"
@@ -1024,10 +1042,7 @@
                                 <TextBlock x:Name="DayAgendaSubtitleTextBlock"
                                            Margin="0,4,0,0"
                                            Foreground="{StaticResource TextSecondaryBrush}"
-                                           Text="Список событий выбранного дня" />
-                                <TextBlock Margin="0,8,0,0"
-                                           Foreground="{StaticResource TextMutedBrush}"
-                                           Text="&#x0422;&#x044F;&#x043D;&#x0438;&#x0442;&#x0435; &#x0441;&#x043E;&#x0431;&#x044B;&#x0442;&#x0438;&#x0435; &#x0432;&#x0432;&#x0435;&#x0440;&#x0445; &#x0438;&#x043B;&#x0438; &#x0432;&#x043D;&#x0438;&#x0437;, &#x0447;&#x0442;&#x043E;&#x0431;&#x044B; &#x0438;&#x0437;&#x043C;&#x0435;&#x043D;&#x0438;&#x0442;&#x044C; &#x0432;&#x0440;&#x0435;&#x043C;&#x044F;. &#x041D;&#x0430; &#x043F;&#x0443;&#x0441;&#x0442;&#x043E;&#x043C; &#x043C;&#x0435;&#x0441;&#x0442;&#x0435; &#x043C;&#x043E;&#x0436;&#x043D;&#x043E; &#x0437;&#x0430;&#x0436;&#x0430;&#x0442;&#x044C; &#x043C;&#x044B;&#x0448;&#x044C; &#x0438; &#x043F;&#x0440;&#x043E;&#x0442;&#x044F;&#x043D;&#x0443;&#x0442;&#x044C; &#x0432;&#x043D;&#x0438;&#x0437;, &#x0447;&#x0442;&#x043E;&#x0431;&#x044B; &#x0441;&#x043E;&#x0437;&#x0434;&#x0430;&#x0442;&#x044C; &#x0447;&#x0435;&#x0440;&#x043D;&#x043E;&#x0432;&#x0438;&#x043A; &#x043D;&#x043E;&#x0432;&#x043E;&#x0433;&#x043E; &#x0441;&#x043E;&#x0431;&#x044B;&#x0442;&#x0438;&#x044F;." />
+                                           Text="Выбранный день" />
                             </StackPanel>
 
                             <ScrollViewer Grid.Row="2"
@@ -1150,7 +1165,7 @@
                                        Text="Сведения" />
                             <TextBlock Margin="0,6,0,18"
                                        Foreground="{StaticResource TextSecondaryBrush}"
-                                       Text="Создание и редактирование событий" />
+                                       Text="Событие" />
                         </StackPanel>
 
                         <Button Grid.Column="1"
@@ -1180,7 +1195,7 @@
                             <TextBlock x:Name="EditorModeSubtitleTextBlock"
                                        Margin="0,6,0,0"
                                        Foreground="{StaticResource TextSecondaryBrush}"
-                                       Text="Выберите день в календаре, и форма сразу подготовит новое событие на эту дату." />
+                                       Text="Заполните основные детали." />
                         </StackPanel>
                     </Border>
 

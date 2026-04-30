@@ -22,7 +22,6 @@ public partial class MainWindow : Window
     private const int MinimumDurationMinutes = 30;
     private const int MinutesPerDay = 24 * 60;
     private const string NewEventDefaultTitle = "\u041D\u043E\u0432\u043E\u0435 \u0441\u043E\u0431\u044B\u0442\u0438\u0435";
-
     private static readonly CultureInfo RussianCulture = new("ru-RU");
     private static readonly SolidColorBrush MarkerFallbackBrush = CreateFrozenBrush(Color.FromRgb(0x1A, 0x73, 0xE8));
 
@@ -149,7 +148,7 @@ public partial class MainWindow : Window
 
         if (_eventRepository.SoftDelete(_selectedEventId.Value))
         {
-            NewButton_OnClick(sender, e);
+            CloseEditor();
             LoadEvents();
             StatusTextBlock.Text = "\u0421\u043E\u0431\u044B\u0442\u0438\u0435 \u0443\u0434\u0430\u043B\u0435\u043D\u043E.";
         }
@@ -278,7 +277,7 @@ public partial class MainWindow : Window
 
     private void TimelineInteractionSurface_OnMouseMove(object sender, MouseEventArgs e)
     {
-        if (_activeTimelineInteraction is null || _activeTimelineCaptureElement is not UIElement captureElement)
+        if (_activeTimelineInteraction is null || _activeTimelineCaptureElement is not FrameworkElement captureElement)
         {
             return;
         }
@@ -300,7 +299,7 @@ public partial class MainWindow : Window
 
         if (Math.Abs(verticalChange) > double.Epsilon)
         {
-            UpdateTimelineInteraction(verticalChange);
+            UpdateTimelineInteraction(verticalChange, e.GetPosition(captureElement));
         }
     }
 
@@ -317,7 +316,7 @@ public partial class MainWindow : Window
 
     private void BeginPointerTimelineInteraction(object sender, MouseButtonEventArgs e, TimelineInteractionMode mode)
     {
-        BeginTimelineInteraction(sender, mode);
+        BeginTimelineInteraction(sender, e, mode);
 
         if (_activeTimelineInteraction is null || sender is not UIElement element)
         {
@@ -352,13 +351,6 @@ public partial class MainWindow : Window
 
         _selectedEventId = null;
         DeleteButton.IsEnabled = false;
-        SeedEditorDefaults(start.Date);
-        StartDatePicker.SelectedDate = start.Date;
-        EndDatePicker.SelectedDate = end.Date;
-        StartTimeTextBox.Text = start.ToString("HH:mm");
-        EndTimeTextBox.Text = end.ToString("HH:mm");
-        OpenEditor();
-        UpdateEditorModeChrome(isEditing: false, start.Date, null);
         StatusTextBlock.Text = $"\u0427\u0435\u0440\u043D\u043E\u0432\u0438\u043A \u043D\u043E\u0432\u043E\u0433\u043E \u0441\u043E\u0431\u044B\u0442\u0438\u044F: {start:HH:mm} - {end:HH:mm}.";
         _activeTimelineCaptureElement = element;
         _lastTimelinePointerPosition = e.GetPosition(this);
@@ -616,11 +608,11 @@ public partial class MainWindow : Window
                 break;
             case CalendarViewMode.Week:
                 CurrentRangeTextBlock.Text = $"{weekStart.ToString("d MMM", RussianCulture)} - {weekEnd.ToString("d MMM yyyy", RussianCulture)}";
-                CurrentRangeSubtitleTextBlock.Text = "\u041D\u0435\u0434\u0435\u043B\u044F \u0441 \u043F\u0435\u0440\u0435\u043D\u043E\u0441\u043E\u043C \u0441\u043E\u0431\u044B\u0442\u0438\u0439 \u043F\u043E \u0432\u0440\u0435\u043C\u0435\u043D\u0438 \u0438 \u0438\u0437\u043C\u0435\u043D\u0435\u043D\u0438\u0435\u043C \u0434\u043B\u0438\u0442\u0435\u043B\u044C\u043D\u043E\u0441\u0442\u0438";
+                CurrentRangeSubtitleTextBlock.Text = string.Empty;
                 break;
             default:
                 CurrentRangeTextBlock.Text = MonthCalendar.DisplayDate.ToString("MMMM yyyy", RussianCulture);
-                CurrentRangeSubtitleTextBlock.Text = "\u041E\u0431\u0437\u043E\u0440 \u043C\u0435\u0441\u044F\u0446\u0430 \u0438 \u0441\u043E\u0431\u044B\u0442\u0438\u0439 \u0432\u044B\u0431\u0440\u0430\u043D\u043D\u043E\u0433\u043E \u0434\u043D\u044F";
+                CurrentRangeSubtitleTextBlock.Text = "\u0421\u043E\u0431\u044B\u0442\u0438\u044F \u0432\u044B\u0431\u0440\u0430\u043D\u043D\u043E\u0433\u043E \u0434\u043D\u044F";
                 break;
 
         }
@@ -720,14 +712,14 @@ public partial class MainWindow : Window
         {
             EditorModeTitleTextBlock.Text = "\u0420\u0435\u0434\u0430\u043A\u0442\u0438\u0440\u043E\u0432\u0430\u043D\u0438\u0435 \u0441\u043E\u0431\u044B\u0442\u0438\u044F";
             EditorModeSubtitleTextBlock.Text = string.IsNullOrWhiteSpace(eventTitle)
-                ? $"\u0418\u0437\u043C\u0435\u043D\u0435\u043D\u0438\u044F \u0441\u043E\u0445\u0440\u0430\u043D\u044F\u0442\u0441\u044F \u0434\u043B\u044F {selectedDate.ToString("d MMMM", RussianCulture)}."
-                : $"\u0421\u0435\u0439\u0447\u0430\u0441 \u043E\u0442\u043A\u0440\u044B\u0442\u043E \u0441\u043E\u0431\u044B\u0442\u0438\u0435 \u00AB{eventTitle}\u00BB \u043D\u0430 {selectedDate.ToString("d MMMM", RussianCulture)}.";
+                ? selectedDate.ToString("d MMMM", RussianCulture)
+                : $"\u00AB{eventTitle}\u00BB, {selectedDate.ToString("d MMMM", RussianCulture)}";
             QuickCreateSelectedDateButton.Content = $"\u041D\u043E\u0432\u043E\u0435 \u0441\u043E\u0431\u044B\u0442\u0438\u0435 \u043D\u0430 {selectedDate.ToString("d MMMM", RussianCulture)}";
             return;
         }
 
         EditorModeTitleTextBlock.Text = "\u041D\u043E\u0432\u043E\u0435 \u0441\u043E\u0431\u044B\u0442\u0438\u0435";
-        EditorModeSubtitleTextBlock.Text = $"\u0411\u044B\u0441\u0442\u0440\u044B\u0439 \u0447\u0435\u0440\u043D\u043E\u0432\u0438\u043A \u0443\u0436\u0435 \u043F\u043E\u0434\u0433\u043E\u0442\u043E\u0432\u043B\u0435\u043D \u043D\u0430 {selectedDate.ToString("d MMMM", RussianCulture)}. \u041E\u0441\u0442\u0430\u0435\u0442\u0441\u044F \u0437\u0430\u043F\u043E\u043B\u043D\u0438\u0442\u044C \u0434\u0435\u0442\u0430\u043B\u0438 \u0438 \u0441\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C.";
+        EditorModeSubtitleTextBlock.Text = selectedDate.ToString("d MMMM", RussianCulture);
         QuickCreateSelectedDateButton.Content = $"\u0421\u043E\u0437\u0434\u0430\u0442\u044C \u043D\u0430 {selectedDate.ToString("d MMMM", RussianCulture)}";
     }
 
@@ -795,7 +787,7 @@ public partial class MainWindow : Window
         return results.OrderBy(x => x.Top).ToList();
     }
 
-    private void BeginTimelineInteraction(object sender, TimelineInteractionMode mode)
+    private void BeginTimelineInteraction(object sender, MouseButtonEventArgs e, TimelineInteractionMode mode)
     {
         if (!TryGetTimelineEvent(sender, out var timeGridEvent))
         {
@@ -813,6 +805,11 @@ public partial class MainWindow : Window
             selected.StartsAtLocal,
             selected.EndsAtLocal,
             mode);
+
+        if (mode == TimelineInteractionMode.Move && sender is FrameworkElement element)
+        {
+            _activeTimelineInteraction.PointerOffsetMinutes = ResolveTimelinePointerOffsetMinutes(timeGridEvent, e.GetPosition(element));
+        }
 
         if (ShouldUseWeekDragPreview(_activeTimelineInteraction))
         {
@@ -849,7 +846,7 @@ public partial class MainWindow : Window
         return true;
     }
 
-    private void UpdateTimelineInteraction(double verticalChange)
+    private void UpdateTimelineInteraction(double verticalChange, Point localPointerPosition)
     {
         if (_activeTimelineInteraction is null)
         {
@@ -867,7 +864,7 @@ public partial class MainWindow : Window
         switch (_activeTimelineInteraction.Mode)
         {
             case TimelineInteractionMode.Move:
-                var shiftedStart = dayStart.Add(_activeTimelineInteraction.OriginalStart.TimeOfDay).AddMinutes(minuteDelta);
+                var shiftedStart = ResolveTimelineMoveStart(_activeTimelineInteraction, targetDay);
                 var shiftedEnd = shiftedStart.Add(duration);
 
                 if (shiftedStart < dayStart)
@@ -910,22 +907,12 @@ public partial class MainWindow : Window
                 break;
 
             case TimelineInteractionMode.Create:
-                var previewEnd = _activeTimelineInteraction.OriginalStart.AddMinutes(Math.Max(MinimumDurationMinutes, minuteDelta));
-                if (previewEnd > dayEnd)
-                {
-                    previewEnd = dayEnd;
-                }
-
-                _activeTimelineInteraction.PreviewStart = _activeTimelineInteraction.OriginalStart;
-                _activeTimelineInteraction.PreviewEnd = previewEnd;
-                StatusTextBlock.Text = $"\u0427\u0435\u0440\u043D\u043E\u0432\u0438\u043A \u043D\u043E\u0432\u043E\u0433\u043E \u0441\u043E\u0431\u044B\u0442\u0438\u044F: {_activeTimelineInteraction.PreviewStart:HH:mm} - {previewEnd:HH:mm}.";
+                var (draftStart, draftEnd) = ResolveTimelineDraftRange(_activeTimelineInteraction, localPointerPosition);
+                _activeTimelineInteraction.PreviewStart = draftStart;
+                _activeTimelineInteraction.PreviewEnd = draftEnd;
+                StatusTextBlock.Text = $"\u0427\u0435\u0440\u043D\u043E\u0432\u0438\u043A \u043D\u043E\u0432\u043E\u0433\u043E \u0441\u043E\u0431\u044B\u0442\u0438\u044F: {draftStart:HH:mm} - {draftEnd:HH:mm}.";
                 break;
         }
-
-        StartDatePicker.SelectedDate = _activeTimelineInteraction.PreviewStart.Date;
-        EndDatePicker.SelectedDate = _activeTimelineInteraction.PreviewEnd.Date;
-        StartTimeTextBox.Text = _activeTimelineInteraction.PreviewStart.ToString("HH:mm");
-        EndTimeTextBox.Text = _activeTimelineInteraction.PreviewEnd.ToString("HH:mm");
 
         var dayChanged = previousPreviewDay != _activeTimelineInteraction.PreviewStart.Date;
         UpdateTimelinePreview(_activeTimelineInteraction, dayChanged);
@@ -1153,7 +1140,7 @@ public partial class MainWindow : Window
         WeekDragPreviewCanvas.Width = WeekBodiesItemsControl.ActualWidth;
         WeekDragPreviewCanvas.Height = 1536d;
 
-        WeekDragPreviewCard.Width = Math.Max(80d, columnWidth - (timelineCardHorizontalMargin * 2d));
+        WeekDragPreviewCard.Width = GetTimelinePreviewWidth(columnWidth - (timelineCardHorizontalMargin * 2d));
         WeekDragPreviewCard.Height = height;
         WeekDragPreviewCard.Background = eventItem.AccentSurfaceBrush;
         WeekDragPreviewCard.BorderBrush = eventItem.AccentBorderBrush;
@@ -1163,7 +1150,9 @@ public partial class MainWindow : Window
         WeekDragPreviewTimeTextBlock.Foreground = eventItem.AccentBrush;
         WeekDragPreviewDescriptionTextBlock.Text = eventItem.Description;
 
-        Canvas.SetLeft(WeekDragPreviewCard, columnLeft + timelineCardHorizontalMargin);
+        Canvas.SetLeft(
+            WeekDragPreviewCard,
+            ClampPreviewLeft(columnLeft + timelineCardHorizontalMargin, WeekDragPreviewCard.Width, WeekDragPreviewCanvas.Width));
         Canvas.SetTop(WeekDragPreviewCard, top);
     }
 
@@ -1255,6 +1244,51 @@ public partial class MainWindow : Window
         return _selectedWeekDays[columnIndex].Date;
     }
 
+    private DateTime ResolveTimelineMoveStart(TimelineInteractionState interaction, DateTime targetDay)
+    {
+        var pointer = _viewMode == CalendarViewMode.Week
+            ? Mouse.GetPosition(WeekBodiesItemsControl)
+            : Mouse.GetPosition(DayTimelineItemsControl);
+        var rawMinutes = (pointer.Y / HourSlotHeight * 60d) - interaction.PointerOffsetMinutes;
+        var durationMinutes = Math.Max(MinimumDurationMinutes, (interaction.OriginalEnd - interaction.OriginalStart).TotalMinutes);
+        var maxStartMinutes = Math.Max(0d, MinutesPerDay - durationMinutes);
+        var snappedMinutes = SnapMinutes(rawMinutes);
+        var clampedMinutes = Math.Clamp(snappedMinutes, 0, (int)Math.Floor(maxStartMinutes));
+        return targetDay.Date.AddMinutes(clampedMinutes);
+    }
+
+    private static double ResolveTimelinePointerOffsetMinutes(TimeGridEventViewModel timeGridEvent, Point localPosition)
+    {
+        if (timeGridEvent.Height <= 0d)
+        {
+            return 0d;
+        }
+
+        var durationMinutes = Math.Max(MinimumDurationMinutes, (timeGridEvent.DisplayEnd - timeGridEvent.DisplayStart).TotalMinutes);
+        var normalizedOffset = Math.Clamp(localPosition.Y, 0d, timeGridEvent.Height) / timeGridEvent.Height;
+        return durationMinutes * normalizedOffset;
+    }
+
+    private (DateTime start, DateTime end) ResolveTimelineDraftRange(TimelineInteractionState interaction, Point localPointerPosition)
+    {
+        var pointerMinutes = SnapMinutes(localPointerPosition.Y / HourSlotHeight * 60d);
+        var originMinutes = (int)(interaction.OriginalStart - interaction.OriginalStart.Date).TotalMinutes;
+        var clampedPointerMinutes = Math.Clamp(pointerMinutes, 0, MinutesPerDay);
+
+        if (clampedPointerMinutes >= originMinutes)
+        {
+            var endMinutes = Math.Min(MinutesPerDay, Math.Max(originMinutes + MinimumDurationMinutes, clampedPointerMinutes));
+            return (
+                interaction.OriginalStart.Date.AddMinutes(originMinutes),
+                interaction.OriginalStart.Date.AddMinutes(endMinutes));
+        }
+
+        var startMinutes = Math.Max(0, Math.Min(originMinutes - MinimumDurationMinutes, clampedPointerMinutes));
+        return (
+            interaction.OriginalStart.Date.AddMinutes(startMinutes),
+            interaction.OriginalStart.Date.AddMinutes(originMinutes));
+    }
+
     private DateTime ResolveTimelineDraftStart(FrameworkElement element, Point localPosition)
     {
         var day = element.DataContext is WeekDayColumnViewModel column
@@ -1283,7 +1317,7 @@ public partial class MainWindow : Window
         WeekDragPreviewCanvas.Width = WeekBodiesItemsControl.ActualWidth;
         WeekDragPreviewCanvas.Height = 1536d;
 
-        WeekDragPreviewCard.Width = Math.Max(80d, columnWidth - (timelineCardHorizontalMargin * 2d));
+        WeekDragPreviewCard.Width = GetTimelinePreviewWidth(columnWidth - (timelineCardHorizontalMargin * 2d));
         WeekDragPreviewCard.Height = height;
         WeekDragPreviewCard.Background = _draftPreviewSurfaceBrush;
         WeekDragPreviewCard.BorderBrush = _draftPreviewBorderBrush;
@@ -1293,7 +1327,9 @@ public partial class MainWindow : Window
         WeekDragPreviewTimeTextBlock.Foreground = _draftPreviewAccentBrush;
         WeekDragPreviewDescriptionTextBlock.Text = "\u041E\u0442\u043F\u0443\u0441\u0442\u0438\u0442\u0435 \u043C\u044B\u0448\u044C, \u0447\u0442\u043E\u0431\u044B \u0437\u0430\u043F\u043E\u043B\u043D\u0438\u0442\u044C \u0447\u0435\u0440\u043D\u043E\u0432\u0438\u043A \u0441\u043F\u0440\u0430\u0432\u0430.";
 
-        Canvas.SetLeft(WeekDragPreviewCard, columnLeft + timelineCardHorizontalMargin);
+        Canvas.SetLeft(
+            WeekDragPreviewCard,
+            ClampPreviewLeft(columnLeft + timelineCardHorizontalMargin, WeekDragPreviewCard.Width, WeekDragPreviewCanvas.Width));
         Canvas.SetTop(WeekDragPreviewCard, top);
     }
 
@@ -1309,7 +1345,7 @@ public partial class MainWindow : Window
         DayDragPreviewCanvas.Width = DayTimelineItemsControl.ActualWidth;
         DayDragPreviewCanvas.Height = 1536d;
 
-        DayDragPreviewCard.Width = Math.Max(80d, DayTimelineItemsControl.ActualWidth - (timelineCardHorizontalMargin * 2d));
+        DayDragPreviewCard.Width = GetTimelinePreviewWidth(DayTimelineItemsControl.ActualWidth - (timelineCardHorizontalMargin * 2d));
         DayDragPreviewCard.Height = height;
         DayDragPreviewCard.Background = _draftPreviewSurfaceBrush;
         DayDragPreviewCard.BorderBrush = _draftPreviewBorderBrush;
@@ -1319,7 +1355,9 @@ public partial class MainWindow : Window
         DayDragPreviewTimeTextBlock.Foreground = _draftPreviewAccentBrush;
         DayDragPreviewDescriptionTextBlock.Text = "\u041E\u0442\u043F\u0443\u0441\u0442\u0438\u0442\u0435 \u043C\u044B\u0448\u044C, \u0447\u0442\u043E\u0431\u044B \u0437\u0430\u043F\u043E\u043B\u043D\u0438\u0442\u044C \u0447\u0435\u0440\u043D\u043E\u0432\u0438\u043A \u0441\u043F\u0440\u0430\u0432\u0430.";
 
-        Canvas.SetLeft(DayDragPreviewCard, timelineCardHorizontalMargin);
+        Canvas.SetLeft(
+            DayDragPreviewCard,
+            ClampPreviewLeft(timelineCardHorizontalMargin, DayDragPreviewCard.Width, DayDragPreviewCanvas.Width));
         Canvas.SetTop(DayDragPreviewCard, top);
     }
 
@@ -1366,6 +1404,22 @@ public partial class MainWindow : Window
     private static bool IsSameTimelineMoment(DateTime left, DateTime right)
     {
         return left == right;
+    }
+
+    private static double GetTimelinePreviewWidth(double availableWidth)
+    {
+        return Math.Max(0d, availableWidth);
+    }
+
+    private static double ClampPreviewLeft(double requestedLeft, double previewWidth, double canvasWidth)
+    {
+        if (canvasWidth <= 0d)
+        {
+            return 0d;
+        }
+
+        var maxLeft = Math.Max(0d, canvasWidth - Math.Max(0d, previewWidth));
+        return Math.Clamp(requestedLeft, 0d, maxLeft);
     }
 
     private static (DateTime clampedStart, DateTime clampedEnd, double top, double height) CalculateTimelineBounds(
@@ -1468,5 +1522,7 @@ public partial class MainWindow : Window
         public TimelineInteractionMode Mode { get; }
 
         public double AccumulatedVerticalDelta { get; set; }
+
+        public double PointerOffsetMinutes { get; set; }
     }
 }
