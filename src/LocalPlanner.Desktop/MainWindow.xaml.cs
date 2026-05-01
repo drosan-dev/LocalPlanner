@@ -22,6 +22,10 @@ public partial class MainWindow : Window
     private const int MinutesStep = 15;
     private const int MinimumDurationMinutes = 30;
     private const int MinutesPerDay = 24 * 60;
+    private const double ExpandedSidebarWidth = 220d;
+    private const double CollapsedSidebarWidth = 58d;
+    private const double ExpandedSidebarSpacerWidth = 18d;
+    private const double CollapsedSidebarSpacerWidth = 10d;
     private const string NewEventDefaultTitle = "\u041D\u043E\u0432\u043E\u0435 \u0441\u043E\u0431\u044B\u0442\u0438\u0435";
     private static readonly CultureInfo RussianCulture = new("ru-RU");
     private static readonly SolidColorBrush MarkerFallbackBrush = CreateFrozenBrush(Color.FromRgb(0x1A, 0x73, 0xE8));
@@ -51,6 +55,8 @@ public partial class MainWindow : Window
     private Brush? _draftPreviewAccentBrush;
     private Brush? _draftPreviewSurfaceBrush;
     private Brush? _draftPreviewBorderBrush;
+    private PlannerPage _currentPage = PlannerPage.Calendar;
+    private bool _isSidebarOpen = true;
 
     public MainWindow()
     {
@@ -76,6 +82,8 @@ public partial class MainWindow : Window
         TimezoneComboBox.ItemsSource = TimeZoneInfo.GetSystemTimeZones();
         TimezoneComboBox.SelectedItem = TimeZoneInfo.Local;
         MonthViewRadioButton.IsChecked = true;
+        CalendarNavRadioButton.IsChecked = true;
+        ApplySidebarState();
         SeedMonthHeaders();
 
         SeedEditorDefaults();
@@ -102,6 +110,114 @@ public partial class MainWindow : Window
         StatusTextBlock.Text = _allEvents.Count == 0
             ? "\u041A\u0430\u043B\u0435\u043D\u0434\u0430\u0440\u044C \u043F\u0443\u0441\u0442. \u0421\u043E\u0437\u0434\u0430\u0439\u0442\u0435 \u043F\u0435\u0440\u0432\u043E\u0435 \u0441\u043E\u0431\u044B\u0442\u0438\u0435."
             : $"\u0412\u0441\u0435\u0433\u043E \u0441\u043E\u0431\u044B\u0442\u0438\u0439: {_allEvents.Count}.";
+    }
+
+    private void NavigationRadioButton_OnChecked(object sender, RoutedEventArgs e)
+    {
+        if (sender is not RadioButton { Tag: string tag } ||
+            !Enum.TryParse(tag, out PlannerPage page))
+        {
+            return;
+        }
+
+        NavigateToPage(page);
+    }
+
+    private void NavigateToPage(PlannerPage page)
+    {
+        _currentPage = page;
+        CalendarPageContent.Visibility = page == PlannerPage.Calendar ? Visibility.Visible : Visibility.Collapsed;
+        EmptyPageContent.Visibility = page == PlannerPage.Calendar ? Visibility.Collapsed : Visibility.Visible;
+
+        if (page == PlannerPage.Calendar)
+        {
+            Title = "\u041B\u043E\u043A\u0430\u043B\u044C\u043D\u044B\u0439 \u043F\u043B\u0430\u043D\u0435\u0440 - \u041A\u0430\u043B\u0435\u043D\u0434\u0430\u0440\u044C";
+            return;
+        }
+
+        var pageText = GetEmptyPageText(page);
+        Title = $"\u041B\u043E\u043A\u0430\u043B\u044C\u043D\u044B\u0439 \u043F\u043B\u0430\u043D\u0435\u0440 - {pageText.Title}";
+        EmptyPageEyebrowTextBlock.Text = pageText.Eyebrow;
+        EmptyPageTitleTextBlock.Text = pageText.Title;
+        EmptyPageDescriptionTextBlock.Text = pageText.Description;
+    }
+
+    private static (string Eyebrow, string Title, string Description) GetEmptyPageText(PlannerPage page)
+    {
+        return page switch
+        {
+            PlannerPage.Today => (
+                "\u0414\u043D\u0435\u0432\u043D\u043E\u0439 \u0444\u043E\u043A\u0443\u0441",
+                "\u0421\u0435\u0433\u043E\u0434\u043D\u044F",
+                "\u0417\u0434\u0435\u0441\u044C \u043F\u043E\u044F\u0432\u0438\u0442\u0441\u044F \u043E\u0431\u0437\u043E\u0440 \u0434\u043D\u044F: \u0432\u0430\u0436\u043D\u043E\u0435, \u0444\u043E\u043A\u0443\u0441, \u0437\u0430\u0434\u0430\u0447\u0438 \u0438 \u0432\u043E\u0437\u043C\u043E\u0436\u043D\u043E\u0441\u0442\u0438. \u041F\u043E\u043A\u0430 \u0441\u043E\u0437\u0434\u0430\u043D\u0430 \u0442\u043E\u0447\u043A\u0430 \u0432\u0445\u043E\u0434\u0430 \u0434\u043B\u044F \u0431\u0443\u0434\u0443\u0449\u0435\u0433\u043E Today-\u044D\u043A\u0440\u0430\u043D\u0430."),
+            PlannerPage.Planning => (
+                "\u041F\u043B\u0430\u043D\u0438\u0440\u043E\u0432\u0430\u043D\u0438\u0435",
+                "\u041F\u043B\u0430\u043D\u0438\u043D\u0433",
+                "\u0411\u0443\u0434\u0443\u0449\u0438\u0439 \u0446\u0435\u043D\u0442\u0440 \u043F\u0435\u0440\u0435\u043D\u043E\u0441\u0430 \u0438\u0434\u0435\u0439 \u0432 \u0440\u0430\u0441\u043F\u0438\u0441\u0430\u043D\u0438\u0435. \u041D\u0430 \u044D\u0442\u043E\u043C \u044D\u0442\u0430\u043F\u0435 \u043E\u043D \u043E\u0441\u0442\u0430\u0451\u0442\u0441\u044F \u043F\u0443\u0441\u0442\u044B\u043C, \u0447\u0442\u043E\u0431\u044B \u043D\u0435 \u0432\u0432\u043E\u0434\u0438\u0442\u044C \u043D\u043E\u0432\u044B\u0435 \u0441\u0443\u0449\u043D\u043E\u0441\u0442\u0438."),
+            PlannerPage.Tasks => (
+                "\u0421\u043F\u0438\u0441\u043A\u0438",
+                "\u0417\u0430\u0434\u0430\u0447\u0438",
+                "\u0417\u0434\u0435\u0441\u044C \u0431\u0443\u0434\u0443\u0442 \u0438\u043D\u0431\u043E\u043A\u0441, \u0437\u0430\u0434\u0430\u0447\u0438 \u043D\u0430 \u0441\u0435\u0433\u043E\u0434\u043D\u044F, \u0434\u0435\u0434\u043B\u0430\u0439\u043D\u044B \u0438 \u0430\u0440\u0445\u0438\u0432. \u0412 Stage 1 \u0434\u043E\u0431\u0430\u0432\u043B\u0435\u043D\u0430 \u0442\u043E\u043B\u044C\u043A\u043E \u043D\u0430\u0432\u0438\u0433\u0430\u0446\u0438\u043E\u043D\u043D\u0430\u044F \u0437\u0430\u0433\u043B\u0443\u0448\u043A\u0430."),
+            PlannerPage.Projects => (
+                "\u041A\u043E\u043D\u0442\u0435\u043A\u0441\u0442",
+                "\u041F\u0440\u043E\u0435\u043A\u0442\u044B",
+                "\u041C\u0435\u0441\u0442\u043E \u0434\u043B\u044F \u0431\u0443\u0434\u0443\u0449\u0438\u0445 \u0440\u0430\u0431\u043E\u0447\u0438\u0445 \u043E\u0431\u043B\u0430\u0441\u0442\u0435\u0439, \u0441\u0447\u0451\u0442\u0447\u0438\u043A\u043E\u0432 \u0438 \u0441\u0432\u044F\u0437\u0430\u043D\u043D\u044B\u0445 \u043F\u043B\u0430\u043D\u043E\u0432. \u041F\u0435\u0440\u0441\u0438\u0441\u0442\u0435\u043D\u0442\u043D\u044B\u0435 \u043F\u0440\u043E\u0435\u043A\u0442\u044B \u0431\u0443\u0434\u0443\u0442 \u0432 \u0441\u043B\u0435\u0434\u0443\u044E\u0449\u0438\u0445 \u044D\u0442\u0430\u043F\u0430\u0445."),
+            PlannerPage.Routines => (
+                "\u041F\u043E\u0432\u0442\u043E\u0440\u044B",
+                "\u0420\u0443\u0442\u0438\u043D\u044B",
+                "\u0417\u0434\u0435\u0441\u044C \u043F\u043E\u0437\u0436\u0435 \u043F\u043E\u044F\u0432\u044F\u0442\u0441\u044F \u043F\u0440\u0430\u0432\u0438\u043B\u0430 \u043F\u043E\u0432\u0442\u043E\u0440\u0435\u043D\u0438\u044F \u0438 \u0433\u0435\u043D\u0435\u0440\u0430\u0446\u0438\u044F \u0437\u0430\u0434\u0430\u0447. \u041D\u043E\u0432\u044B\u0435 \u0440\u0443\u0442\u0438\u043D\u044B \u043F\u043E\u043A\u0430 \u043D\u0435 \u0441\u043E\u0437\u0434\u0430\u044E\u0442\u0441\u044F."),
+            PlannerPage.Trackers => (
+                "\u0414\u043E\u043B\u0433\u0438\u0435 \u0434\u0435\u043B\u0430",
+                "\u0422\u0440\u0435\u043A\u0435\u0440\u044B",
+                "\u0411\u0443\u0434\u0443\u0449\u0438\u0439 \u0434\u043E\u043C \u0434\u043B\u044F \u043A\u043D\u0438\u0433, \u043A\u0443\u0440\u0441\u043E\u0432, \u0438\u0433\u0440 \u0438 \u0434\u0440\u0443\u0433\u0438\u0445 \u0434\u043B\u0438\u043D\u043D\u044B\u0445 \u0430\u043A\u0442\u0438\u0432\u043D\u043E\u0441\u0442\u0435\u0439. \u042D\u0442\u0430 \u0437\u0430\u0433\u043B\u0443\u0448\u043A\u0430 \u043D\u0435 \u043C\u0435\u043D\u044F\u0435\u0442 \u0434\u0430\u043D\u043D\u044B\u0435."),
+            PlannerPage.Archive => (
+                "\u0418\u0441\u0442\u043E\u0440\u0438\u044F",
+                "\u0410\u0440\u0445\u0438\u0432",
+                "\u0417\u0434\u0435\u0441\u044C \u0431\u0443\u0434\u0443\u0442 \u0437\u0430\u0432\u0435\u0440\u0448\u0451\u043D\u043D\u044B\u0435, \u043E\u0442\u043C\u0435\u043D\u0451\u043D\u043D\u044B\u0435 \u0438 \u0441\u043A\u0440\u044B\u0442\u044B\u0435 \u044D\u043B\u0435\u043C\u0435\u043D\u0442\u044B \u043F\u043B\u0430\u043D\u0435\u0440\u0430. \u041F\u043E\u043A\u0430 \u0430\u0440\u0445\u0438\u0432 \u043D\u0435 \u0432\u043B\u0438\u044F\u0435\u0442 \u043D\u0430 \u0441\u043E\u0431\u044B\u0442\u0438\u044F."),
+            PlannerPage.Settings => (
+                "\u041A\u043E\u043D\u0444\u0438\u0433\u0443\u0440\u0430\u0446\u0438\u044F",
+                "\u041D\u0430\u0441\u0442\u0440\u043E\u0439\u043A\u0438",
+                "\u0411\u0443\u0434\u0443\u0449\u0435\u0435 \u043C\u0435\u0441\u0442\u043E \u0434\u043B\u044F \u043D\u0430\u0447\u0430\u043B\u0430 \u0434\u043D\u044F, \u0434\u043B\u0438\u0442\u0435\u043B\u044C\u043D\u043E\u0441\u0442\u0438 \u0437\u0430\u0434\u0430\u0447 \u0438 \u043D\u0430\u043F\u043E\u043C\u0438\u043D\u0430\u043D\u0438\u0439. \u0412 Stage 1 \u043D\u0430\u0441\u0442\u0440\u043E\u0439\u043A\u0438 \u0435\u0449\u0451 \u043D\u0435 \u0441\u043E\u0445\u0440\u0430\u043D\u044F\u044E\u0442\u0441\u044F."),
+            _ => (
+                "\u0421\u043A\u043E\u0440\u043E",
+                "\u0420\u0430\u0437\u0434\u0435\u043B \u0432 \u0440\u0430\u0437\u0440\u0430\u0431\u043E\u0442\u043A\u0435",
+                "\u0417\u0434\u0435\u0441\u044C \u043F\u043E\u044F\u0432\u0438\u0442\u0441\u044F \u0441\u043E\u0434\u0435\u0440\u0436\u0438\u043C\u043E\u0435 \u0431\u0443\u0434\u0443\u0449\u0435\u0433\u043E \u0440\u0430\u0437\u0434\u0435\u043B\u0430.")
+        };
+    }
+
+    private void SidebarToggleButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        _isSidebarOpen = !_isSidebarOpen;
+        ApplySidebarState();
+    }
+
+    private void ApplySidebarState()
+    {
+        SidebarColumn.Width = new GridLength(_isSidebarOpen ? ExpandedSidebarWidth : CollapsedSidebarWidth);
+        SidebarSpacerColumn.Width = new GridLength(_isSidebarOpen ? ExpandedSidebarSpacerWidth : CollapsedSidebarSpacerWidth);
+        SidebarBorder.Padding = _isSidebarOpen ? new Thickness(18) : new Thickness(12);
+        SidebarHeaderContent.Visibility = _isSidebarOpen ? Visibility.Visible : Visibility.Collapsed;
+        SidebarNavigationContent.Visibility = Visibility.Visible;
+        SettingsNavRadioButton.Visibility = Visibility.Visible;
+        SidebarToggleButton.Content = _isSidebarOpen ? "\u2630" : "\u2630";
+        SidebarToggleButton.ToolTip = _isSidebarOpen ? "\u0421\u0432\u0435\u0440\u043D\u0443\u0442\u044C \u043D\u0430\u0432\u0438\u0433\u0430\u0446\u0438\u044E" : "\u041E\u0442\u043A\u0440\u044B\u0442\u044C \u043D\u0430\u0432\u0438\u0433\u0430\u0446\u0438\u044E";
+        ApplyNavigationButtonState(TodayNavRadioButton, "\u25C9", "\u0421\u0435\u0433\u043E\u0434\u043D\u044F");
+        ApplyNavigationButtonState(PlanningNavRadioButton, "\u2726", "\u041F\u043B\u0430\u043D\u0438\u0440\u043E\u0432\u0430\u043D\u0438\u0435");
+        ApplyNavigationButtonState(TasksNavRadioButton, "\u2713", "\u0417\u0430\u0434\u0430\u0447\u0438");
+        ApplyNavigationButtonState(ProjectsNavRadioButton, "\u25A3", "\u041F\u0440\u043E\u0435\u043A\u0442\u044B");
+        ApplyNavigationButtonState(RoutinesNavRadioButton, "\u21BB", "\u0420\u0443\u0442\u0438\u043D\u044B");
+        ApplyNavigationButtonState(TrackersNavRadioButton, "\u25CE", "\u0422\u0440\u0435\u043A\u0435\u0440\u044B");
+        ApplyNavigationButtonState(CalendarNavRadioButton, "\u25A6", "\u041A\u0430\u043B\u0435\u043D\u0434\u0430\u0440\u044C");
+        ApplyNavigationButtonState(ArchiveNavRadioButton, "\u25F7", "\u0410\u0440\u0445\u0438\u0432");
+        ApplyNavigationButtonState(SettingsNavRadioButton, "\u2699", "\u041D\u0430\u0441\u0442\u0440\u043E\u0439\u043A\u0438");
+    }
+
+    private void ApplyNavigationButtonState(RadioButton button, string icon, string label)
+    {
+        button.Content = _isSidebarOpen ? $"{icon}  {label}" : icon;
+        button.ToolTip = label;
+        button.HorizontalContentAlignment = _isSidebarOpen ? HorizontalAlignment.Left : HorizontalAlignment.Center;
+        button.Padding = _isSidebarOpen ? new Thickness(12, 10, 12, 10) : new Thickness(0, 10, 0, 10);
     }
 
     private void EventsListBox_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -526,6 +642,11 @@ public partial class MainWindow : Window
 
     private void Window_OnPreviewKeyDown(object sender, KeyEventArgs e)
     {
+        if (_currentPage != PlannerPage.Calendar)
+        {
+            return;
+        }
+
         if (Keyboard.FocusedElement is DependencyObject focused &&
             (FindVisualAncestor<TextBoxBase>(focused) is not null ||
              FindVisualAncestor<ComboBox>(focused) is not null ||
@@ -2155,6 +2276,19 @@ public partial class MainWindow : Window
         Day,
         Week,
         Month
+    }
+
+    private enum PlannerPage
+    {
+        Today,
+        Planning,
+        Tasks,
+        Projects,
+        Routines,
+        Trackers,
+        Calendar,
+        Archive,
+        Settings
     }
 
     private enum TimelineInteractionMode

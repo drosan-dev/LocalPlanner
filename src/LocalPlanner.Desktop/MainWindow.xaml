@@ -47,6 +47,43 @@
             <Setter Property="BorderThickness" Value="1" />
         </Style>
 
+        <Style x:Key="SidebarNavButtonStyle" TargetType="RadioButton">
+            <Setter Property="Margin" Value="0,0,0,6" />
+            <Setter Property="Padding" Value="12,10" />
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="NavButtonChrome"
+                                Padding="{TemplateBinding Padding}"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="12">
+                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="NavButtonChrome" Property="Background" Value="{StaticResource PanelSubtleBrush}" />
+                                <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="NavButtonChrome" Property="Background" Value="{StaticResource AccentSoftBrush}" />
+                                <Setter TargetName="NavButtonChrome" Property="BorderBrush" Value="#554F8DFD" />
+                                <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <Style x:Key="FlatChromeButtonStyle" TargetType="Button">
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderBrush" Value="Transparent" />
@@ -817,6 +854,161 @@
 
     <Grid Margin="18">
         <Grid.ColumnDefinitions>
+            <ColumnDefinition x:Name="SidebarColumn" Width="220" />
+            <ColumnDefinition x:Name="SidebarSpacerColumn" Width="18" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <Border x:Name="SidebarBorder"
+                Grid.Column="0"
+                Padding="18"
+                Background="{StaticResource PanelBackgroundBrush}"
+                BorderBrush="{StaticResource BorderBrushStrong}"
+                BorderThickness="1"
+                CornerRadius="24">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="18" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel x:Name="SidebarHeaderContent">
+                        <TextBlock FontSize="22"
+                                   FontWeight="SemiBold"
+                                   Text="Local Planner" />
+                        <TextBlock Margin="0,4,0,0"
+                                   Foreground="{StaticResource TextMutedBrush}"
+                                   Text="Рабочее пространство" />
+                    </StackPanel>
+
+                    <Button x:Name="SidebarToggleButton"
+                            Grid.Column="1"
+                            Width="34"
+                            Height="34"
+                            Padding="0"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Top"
+                            Background="{StaticResource PanelSubtleBrush}"
+                            BorderBrush="{StaticResource BorderBrushSoft}"
+                            Click="SidebarToggleButton_OnClick"
+                            Content="☰"
+                            ToolTip="Свернуть навигацию" />
+                </Grid>
+
+                <StackPanel x:Name="SidebarNavigationContent"
+                            Grid.Row="2">
+                    <RadioButton x:Name="TodayNavRadioButton"
+                                 Content="Сегодня"
+                                 HorizontalContentAlignment="Left"
+                                 GroupName="PlannerNavigation"
+                                 Tag="Today"
+                                 Checked="NavigationRadioButton_OnChecked"
+                                 Style="{StaticResource SidebarNavButtonStyle}" />
+                    <RadioButton x:Name="PlanningNavRadioButton"
+                                 Content="Планирование"
+                                 HorizontalContentAlignment="Left"
+                                 GroupName="PlannerNavigation"
+                                 Tag="Planning"
+                                 Checked="NavigationRadioButton_OnChecked"
+                                 Style="{StaticResource SidebarNavButtonStyle}" />
+                    <RadioButton x:Name="TasksNavRadioButton"
+                                 Content="Задачи"
+                                 HorizontalContentAlignment="Left"
+                                 GroupName="PlannerNavigation"
+                                 Tag="Tasks"
+                                 Checked="NavigationRadioButton_OnChecked"
+                                 Style="{StaticResource SidebarNavButtonStyle}" />
+                    <RadioButton x:Name="ProjectsNavRadioButton"
+                                 Content="Проекты"
+                                 HorizontalContentAlignment="Left"
+                                 GroupName="PlannerNavigation"
+                                 Tag="Projects"
+                                 Checked="NavigationRadioButton_OnChecked"
+                                 Style="{StaticResource SidebarNavButtonStyle}" />
+                    <RadioButton x:Name="RoutinesNavRadioButton"
+                                 Content="Рутины"
+                                 HorizontalContentAlignment="Left"
+                                 GroupName="PlannerNavigation"
+                                 Tag="Routines"
+                                 Checked="NavigationRadioButton_OnChecked"
+                                 Style="{StaticResource SidebarNavButtonStyle}" />
+                    <RadioButton x:Name="TrackersNavRadioButton"
+                                 Content="Трекеры"
+                                 HorizontalContentAlignment="Left"
+                                 GroupName="PlannerNavigation"
+                                 Tag="Trackers"
+                                 Checked="NavigationRadioButton_OnChecked"
+                                 Style="{StaticResource SidebarNavButtonStyle}" />
+                    <RadioButton x:Name="CalendarNavRadioButton"
+                                 Content="Календарь"
+                                 HorizontalContentAlignment="Left"
+                                 GroupName="PlannerNavigation"
+                                 Tag="Calendar"
+                                 Checked="NavigationRadioButton_OnChecked"
+                                 Style="{StaticResource SidebarNavButtonStyle}" />
+                    <RadioButton x:Name="ArchiveNavRadioButton"
+                                 Content="Архив"
+                                 HorizontalContentAlignment="Left"
+                                 GroupName="PlannerNavigation"
+                                 Tag="Archive"
+                                 Checked="NavigationRadioButton_OnChecked"
+                                 Style="{StaticResource SidebarNavButtonStyle}" />
+                </StackPanel>
+
+                <RadioButton x:Name="SettingsNavRadioButton"
+                             Grid.Row="3"
+                             Content="Настройки"
+                             HorizontalContentAlignment="Left"
+                             GroupName="PlannerNavigation"
+                             Tag="Settings"
+                             Checked="NavigationRadioButton_OnChecked"
+                             Style="{StaticResource SidebarNavButtonStyle}" />
+            </Grid>
+        </Border>
+
+        <Grid x:Name="MainContentHost"
+              Grid.Column="2">
+        <Border x:Name="EmptyPageContent"
+                Padding="34"
+                Background="{StaticResource PanelBackgroundBrush}"
+                BorderBrush="{StaticResource BorderBrushStrong}"
+                BorderThickness="1"
+                CornerRadius="24"
+                Visibility="Collapsed">
+            <Grid>
+                <StackPanel Width="520"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center">
+                    <TextBlock x:Name="EmptyPageEyebrowTextBlock"
+                               Foreground="{StaticResource AccentBrush}"
+                               FontWeight="SemiBold"
+                               Text="Скоро" />
+                    <TextBlock x:Name="EmptyPageTitleTextBlock"
+                               Margin="0,12,0,0"
+                               FontSize="32"
+                               FontWeight="SemiBold"
+                               Text="Раздел в разработке"
+                               TextWrapping="Wrap" />
+                    <TextBlock x:Name="EmptyPageDescriptionTextBlock"
+                               Margin="0,12,0,0"
+                               FontSize="15"
+                               Foreground="{StaticResource TextSecondaryBrush}"
+                               Text="Здесь появится содержимое будущего раздела."
+                               TextWrapping="Wrap" />
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <Grid x:Name="CalendarPageContent">
+        <Grid.ColumnDefinitions>
             <ColumnDefinition Width="290" />
             <ColumnDefinition Width="18" />
             <ColumnDefinition Width="*" />
@@ -1478,6 +1670,8 @@
                 </StackPanel>
             </ScrollViewer>
         </Border>
+    </Grid>
+    </Grid>
     </Grid>
 </Window>
 
