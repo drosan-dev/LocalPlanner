@@ -1,23 +1,23 @@
 # LocalPlanner
 
-Windows-first desktop MVP for a private local-first calendar application.
+Windows-first desktop MVP приватного local-first календаря и планировщика.
 
-## Current desktop scope
+## Текущий desktop-объём
 
-- `WPF` desktop app in `src/LocalPlanner.Desktop`
-- Local event storage in `SQLite`
-- Create, edit, list, and soft-delete events
-- Event fields: `title`, `description`, `start/end`, `timezone`, `all-day`, `RRULE`
-- Solution and CI pinned to `.NET 6`
+- `WPF` desktop-приложение в `src/LocalPlanner.Desktop`
+- Локальное хранение событий в `SQLite`
+- Создание, редактирование, список и soft-delete событий
+- Поля события: `title`, `description`, `start/end`, `timezone`, `all-day`, `RRULE`
+- Solution и CI зафиксированы на `.NET 6`
 
-## Project layout
+## Структура проекта
 
 ```text
 src/
   LocalPlanner.Desktop/
 ```
 
-## Getting started
+## Запуск
 
 ```powershell
 $env:DOTNET_CLI_HOME = "$PWD/.dotnet"
@@ -25,17 +25,21 @@ dotnet restore LocalPlanner.sln --packages .\.nuget\packages
 dotnet build LocalPlanner.sln --configuration Debug --no-restore
 ```
 
-## Local data
+## Локальные данные
 
-The desktop app stores its database under:
+Desktop-приложение хранит базу данных здесь:
 
 ```text
 %LOCALAPPDATA%\LocalPlanner\localplanner.db
 ```
 
-## Current limitations
+## Текущие ограничения
 
-- No LAN sync yet
-- No operation log writes yet
-- No pairing/auth UI yet
-- Recurrence is stored as raw `RRULE` text without advanced rule editing
+- Пока нет LAN-синхронизации
+- Пока нет записей operation log
+- Пока нет UI для pairing/auth
+- Повторение хранится как сырой текст `RRULE` без продвинутого редактора правил
+
+## Документация
+
+Документация проекта ведётся на русском языке. Технические идентификаторы, имена классов, поля и команды остаются в исходном виде, если перевод ухудшает точность.

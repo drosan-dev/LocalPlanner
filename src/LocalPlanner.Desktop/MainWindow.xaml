@@ -128,6 +128,111 @@
             <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
         </Style>
 
+        <Style x:Key="TaskCompletionCheckBoxStyle" TargetType="CheckBox">
+            <Setter Property="Width" Value="26" />
+            <Setter Property="Height" Value="26" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="CheckBox">
+                        <Grid Width="{TemplateBinding Width}"
+                              Height="{TemplateBinding Height}">
+                            <Ellipse x:Name="TaskCheckCircle"
+                                     Fill="{StaticResource PanelSubtleBrush}"
+                                     Stroke="{StaticResource BorderBrushSoft}"
+                                     StrokeThickness="1.5" />
+                            <Path x:Name="TaskCheckMark"
+                                  Width="12"
+                                  Height="9"
+                                  HorizontalAlignment="Center"
+                                  VerticalAlignment="Center"
+                                  Data="M 1 4.8 L 4.4 8 L 11 1"
+                                  Stretch="Fill"
+                                  Stroke="White"
+                                  StrokeEndLineCap="Round"
+                                  StrokeLineJoin="Round"
+                                  StrokeStartLineCap="Round"
+                                  StrokeThickness="2.2"
+                                  Visibility="Collapsed" />
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="TaskCheckCircle" Property="Stroke" Value="{StaticResource AccentBrush}" />
+                                <Setter TargetName="TaskCheckCircle" Property="Fill" Value="{StaticResource AccentSoftBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="TaskCheckCircle" Property="Fill" Value="{StaticResource AccentStrongBrush}" />
+                                <Setter TargetName="TaskCheckCircle" Property="Stroke" Value="{StaticResource AccentStrongBrush}" />
+                                <Setter TargetName="TaskCheckMark" Property="Visibility" Value="Visible" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <DataTemplate x:Key="TaskItemTemplate">
+            <Border Margin="0,0,0,10"
+                    Padding="14"
+                    Background="{StaticResource PanelMutedBackgroundBrush}"
+                    BorderBrush="{StaticResource BorderBrushStrong}"
+                    BorderThickness="1"
+                    CornerRadius="18">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="14" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="12" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <CheckBox VerticalAlignment="Top"
+                              IsChecked="{Binding IsCompleted, Mode=OneWay}"
+                              Style="{StaticResource TaskCompletionCheckBoxStyle}"
+                              Tag="{Binding Id}"
+                              Click="ToggleTaskItemCompletionCheckBox_OnClick" />
+
+                    <StackPanel Grid.Column="2">
+                        <TextBlock FontSize="16"
+                                   FontWeight="SemiBold"
+                                   Text="{Binding Title}"
+                                   TextWrapping="Wrap">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsCompleted}" Value="True">
+                                            <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
+                                            <Setter Property="TextDecorations" Value="Strikethrough" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                        <WrapPanel Margin="0,7,0,0">
+                            <TextBlock Margin="0,0,14,0"
+                                       Foreground="{StaticResource TextMutedBrush}"
+                                       Text="{Binding ProjectTitle, TargetNullValue=Без проекта}" />
+                            <TextBlock Foreground="{StaticResource AccentBrush}"
+                                       Text="{Binding DueText}" />
+                        </WrapPanel>
+                    </StackPanel>
+
+                    <Button Grid.Column="4"
+                            Padding="12,8"
+                            VerticalAlignment="Center"
+                            Background="{StaticResource PanelSubtleBrush}"
+                            BorderBrush="{StaticResource BorderBrushSoft}"
+                            Foreground="{StaticResource TextPrimaryBrush}"
+                            Tag="{Binding Id}"
+                            Click="OpenTaskItemButton_OnClick"
+                            Content="Открыть" />
+                </Grid>
+            </Border>
+        </DataTemplate>
+
         <Style TargetType="Calendar">
             <Setter Property="Background" Value="{StaticResource PanelMutedBackgroundBrush}" />
             <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
@@ -850,6 +955,90 @@
                 </Grid>
             </Grid>
         </DataTemplate>
+
+        <DataTemplate x:Key="ReadOnlyTimelineEventTemplate" DataType="{x:Type vm:TimeGridEventViewModel}">
+            <Grid Width="{Binding RelativeSource={RelativeSource AncestorType=Canvas}, Path=ActualWidth}"
+                  Height="{Binding Height}">
+                <Border Margin="6,0,6,0"
+                        Background="{Binding AccentSurfaceBrush}"
+                        BorderBrush="{Binding AccentBorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="12">
+                    <Grid Margin="10,8,10,10">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <TextBlock FontSize="12"
+                                   FontWeight="SemiBold"
+                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                   Text="{Binding Title}"
+                                   TextTrimming="CharacterEllipsis" />
+                        <TextBlock Grid.Row="1"
+                                   Margin="0,2,0,0"
+                                   FontSize="11"
+                                   Foreground="{Binding AccentBrush}"
+                                   Text="{Binding TimeLabel}" />
+                        <TextBlock Grid.Row="2"
+                                   Margin="0,4,0,0"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   Text="{Binding Description}"
+                                   TextWrapping="Wrap" />
+                    </Grid>
+                </Border>
+            </Grid>
+        </DataTemplate>
+
+        <DataTemplate x:Key="TodayOverviewItemTemplate" DataType="{x:Type vm:TodayOverviewItemViewModel}">
+            <Border Margin="0,0,0,10"
+                    Padding="13,11"
+                    Background="{StaticResource PanelMutedBackgroundBrush}"
+                    BorderBrush="{StaticResource BorderBrushStrong}"
+                    BorderThickness="1"
+                    CornerRadius="14">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="12" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="10" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <CheckBox x:Name="TodayTaskCompletionCheckBox"
+                              VerticalAlignment="Top"
+                              IsChecked="False"
+                              Style="{StaticResource TaskCompletionCheckBoxStyle}"
+                              Tag="{Binding}"
+                              Click="TodayTaskCompletionCheckBox_OnClick" />
+
+                    <StackPanel Grid.Column="2">
+                        <TextBlock FontWeight="SemiBold"
+                                   Text="{Binding Title}"
+                                   TextWrapping="Wrap" />
+                        <TextBlock Margin="0,5,0,0"
+                                   Foreground="{StaticResource TextMutedBrush}"
+                                   Text="{Binding Detail}"
+                                   TextWrapping="Wrap" />
+                    </StackPanel>
+
+                    <Button Grid.Column="4"
+                            Padding="10,7"
+                            VerticalAlignment="Center"
+                            Background="{StaticResource PanelSubtleBrush}"
+                            BorderBrush="{StaticResource BorderBrushSoft}"
+                            Click="TodayOverviewItemButton_OnClick"
+                            Tag="{Binding}"
+                            Content="{Binding BadgeText}" />
+                </Grid>
+            </Border>
+            <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding IsTask}" Value="False">
+                    <Setter TargetName="TodayTaskCompletionCheckBox" Property="Visibility" Value="Collapsed" />
+                </DataTrigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
     </Window.Resources>
 
     <Grid Margin="18">
@@ -1006,6 +1195,1235 @@
                 </StackPanel>
             </Grid>
         </Border>
+
+        <Grid x:Name="TodayPageContent"
+              Visibility="Collapsed">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="430" />
+                <ColumnDefinition Width="18" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0"
+                    Padding="22"
+                    Background="{StaticResource PanelBackgroundBrush}"
+                    BorderBrush="{StaticResource BorderBrushStrong}"
+                    BorderThickness="1"
+                    CornerRadius="20">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="18" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <StackPanel>
+                        <TextBlock Foreground="{StaticResource AccentBrush}"
+                                   FontWeight="SemiBold"
+                                   Text="Дневной фокус" />
+                        <TextBlock Margin="0,8,0,0"
+                                   FontSize="30"
+                                   FontWeight="SemiBold"
+                                   Text="Сегодня" />
+                        <TextBlock x:Name="TodayOverviewSubtitleTextBlock"
+                                   Margin="0,6,0,0"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   Text="Что требует внимания прямо сейчас" />
+                    </StackPanel>
+
+                    <ScrollViewer Grid.Row="2"
+                                  VerticalScrollBarVisibility="Auto">
+                        <ScrollViewer.Resources>
+                            <Style TargetType="ScrollBar" BasedOn="{StaticResource AppScrollBarStyle}" />
+                        </ScrollViewer.Resources>
+                        <StackPanel>
+                            <Button Style="{StaticResource FlatChromeButtonStyle}"
+                                    HorizontalContentAlignment="Stretch"
+                                    Click="ToggleTodayImportantGroupButton_OnClick">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="8" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock x:Name="TodayImportantGroupChevronTextBlock"
+                                               Foreground="{StaticResource TextMutedBrush}"
+                                               FontSize="16"
+                                               FontWeight="SemiBold"
+                                               Text="▾" />
+                                    <TextBlock Grid.Column="2"
+                                               FontSize="18"
+                                               FontWeight="SemiBold"
+                                               Text="Важное" />
+                                </Grid>
+                            </Button>
+                            <StackPanel x:Name="TodayImportantSectionContent"
+                                        Margin="0,8,0,0">
+                                <TextBlock x:Name="TodayImportantEmptyTextBlock"
+                                           Margin="0,0,0,12"
+                                           Foreground="{StaticResource TextMutedBrush}"
+                                           Text="Нет просроченных и сегодняшних задач." />
+                                <ItemsControl x:Name="TodayImportantItemsControl"
+                                              ItemTemplate="{StaticResource TodayOverviewItemTemplate}" />
+                            </StackPanel>
+
+                            <Button Margin="0,16,0,0"
+                                    Style="{StaticResource FlatChromeButtonStyle}"
+                                    HorizontalContentAlignment="Stretch"
+                                    Click="ToggleTodayTasksGroupButton_OnClick">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="8" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock x:Name="TodayTasksGroupChevronTextBlock"
+                                               Foreground="{StaticResource TextMutedBrush}"
+                                               FontSize="16"
+                                               FontWeight="SemiBold"
+                                               Text="▾" />
+                                    <TextBlock Grid.Column="2"
+                                               FontSize="18"
+                                               FontWeight="SemiBold"
+                                               Text="Задачи" />
+                                </Grid>
+                            </Button>
+                            <StackPanel x:Name="TodayTasksSectionContent"
+                                        Margin="0,8,0,0">
+                                <TextBlock x:Name="TodayTasksEmptyTextBlock"
+                                           Margin="0,0,0,12"
+                                           Foreground="{StaticResource TextMutedBrush}"
+                                           Text="Нет задач на будущее, которые можно сделать сегодня." />
+                                <ItemsControl x:Name="TodayTaskItemsControl"
+                                              ItemTemplate="{StaticResource TodayOverviewItemTemplate}" />
+                            </StackPanel>
+
+                            <Button Margin="0,16,0,0"
+                                    Style="{StaticResource FlatChromeButtonStyle}"
+                                    HorizontalContentAlignment="Stretch"
+                                    Click="ToggleTodayOpportunitiesGroupButton_OnClick">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="8" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock x:Name="TodayOpportunitiesGroupChevronTextBlock"
+                                               Foreground="{StaticResource TextMutedBrush}"
+                                               FontSize="16"
+                                               FontWeight="SemiBold"
+                                               Text="▾" />
+                                    <TextBlock Grid.Column="2"
+                                               FontSize="18"
+                                               FontWeight="SemiBold"
+                                               Text="Возможности" />
+                                </Grid>
+                            </Button>
+                            <StackPanel x:Name="TodayOpportunitiesSectionContent"
+                                        Margin="0,8,0,0">
+                                <TextBlock x:Name="TodayOpportunitiesEmptyTextBlock"
+                                           Margin="0,0,0,12"
+                                           Foreground="{StaticResource TextMutedBrush}"
+                                           Text="Инбокс планирования пуст." />
+                                <ItemsControl x:Name="TodayOpportunityItemsControl"
+                                              ItemTemplate="{StaticResource TodayOverviewItemTemplate}" />
+                            </StackPanel>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+
+            <Border Grid.Column="2"
+                    Padding="22"
+                    Background="{StaticResource PanelBackgroundBrush}"
+                    BorderBrush="{StaticResource BorderBrushStrong}"
+                    BorderThickness="1"
+                    CornerRadius="20">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="16" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel>
+                            <TextBlock Foreground="{StaticResource AccentBrush}"
+                                       FontWeight="SemiBold"
+                                       Text="Календарь дня" />
+                            <TextBlock x:Name="TodayTimelineTitleTextBlock"
+                                       Margin="0,8,0,0"
+                                       FontSize="30"
+                                       FontWeight="SemiBold"
+                                       Text="Повестка" />
+                            <TextBlock x:Name="TodayTimelineSubtitleTextBlock"
+                                       Margin="0,6,0,0"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       Text="Запланированные блоки по времени" />
+                        </StackPanel>
+
+                        <Button Grid.Column="1"
+                                Padding="16,10"
+                                VerticalAlignment="Top"
+                                Background="{StaticResource PanelSubtleBrush}"
+                                BorderBrush="{StaticResource BorderBrushSoft}"
+                                Click="OpenTodayInCalendarButton_OnClick"
+                                Content="Открыть день" />
+                    </Grid>
+
+                    <ScrollViewer Grid.Row="2"
+                                  VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Disabled">
+                        <ScrollViewer.Resources>
+                            <Style TargetType="ScrollBar" BasedOn="{StaticResource AppScrollBarStyle}" />
+                        </ScrollViewer.Resources>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="68" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <ItemsControl x:Name="TodayHoursItemsControl"
+                                          Grid.Column="0"
+                                          ItemTemplate="{StaticResource TimelineHourTemplate}" />
+
+                            <Grid Grid.Column="1"
+                                  Height="1536">
+                                <ItemsControl x:Name="TodaySlotLinesItemsControl"
+                                              ItemTemplate="{StaticResource TimelineSlotLineTemplate}" />
+
+                                <TextBlock x:Name="TodayTimelineEmptyTextBlock"
+                                           Margin="14,14,14,0"
+                                           VerticalAlignment="Top"
+                                           Foreground="{StaticResource TextMutedBrush}"
+                                           Text="На сегодня нет событий с временем."
+                                           Visibility="Collapsed" />
+
+                                <ItemsControl x:Name="TodayTimelineItemsControl"
+                                              ItemTemplate="{StaticResource ReadOnlyTimelineEventTemplate}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <Canvas />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemContainerStyle>
+                                        <Style TargetType="ContentPresenter">
+                                            <Setter Property="Canvas.Left" Value="0" />
+                                            <Setter Property="Canvas.Top" Value="{Binding Top}" />
+                                        </Style>
+                                    </ItemsControl.ItemContainerStyle>
+                                </ItemsControl>
+                            </Grid>
+                        </Grid>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <Grid x:Name="PlanningPageContent"
+              Visibility="Collapsed">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="400" />
+                <ColumnDefinition Width="18" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0"
+                    Padding="22"
+                    Background="{StaticResource PanelBackgroundBrush}"
+                    BorderBrush="{StaticResource BorderBrushStrong}"
+                    BorderThickness="1"
+                    CornerRadius="20">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="18" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="12" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <StackPanel>
+                        <TextBlock Foreground="{StaticResource AccentBrush}"
+                                   FontWeight="SemiBold"
+                                   Text="Планирование" />
+                        <TextBlock Margin="0,8,0,0"
+                                   FontSize="28"
+                                   FontWeight="SemiBold"
+                                   Text="Инбокс" />
+                        <TextBlock x:Name="PlanningCountTextBlock"
+                                   Margin="0,6,0,0"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   Text="Нет заметок" />
+                    </StackPanel>
+
+                    <Border Grid.Row="2"
+                            Padding="14"
+                            Background="{StaticResource PanelMutedBackgroundBrush}"
+                            BorderBrush="{StaticResource BorderBrushStrong}"
+                            BorderThickness="1"
+                            CornerRadius="16">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="10" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox x:Name="PlanningQuickAddTextBox"
+                                     Padding="10"
+                                     Background="{StaticResource PanelSubtleBrush}"
+                                     BorderBrush="{StaticResource BorderBrushSoft}"
+                                     BorderThickness="1"
+                                     Foreground="{StaticResource TextPrimaryBrush}"
+                                     Text="Новая заметка"
+                                     GotFocus="PlanningQuickAddTextBox_OnGotFocus" />
+                            <Button Grid.Column="2"
+                                    Padding="14,9"
+                                    Background="{StaticResource AccentStrongBrush}"
+                                    BorderBrush="{StaticResource AccentStrongBrush}"
+                                    Foreground="White"
+                                    FontWeight="SemiBold"
+                                    Click="AddPlanningItemButton_OnClick"
+                                    Content="+ Добавить" />
+                        </Grid>
+                    </Border>
+
+                    <ListBox x:Name="PlanningItemsListBox"
+                             Grid.Row="4"
+                             Background="Transparent"
+                             BorderThickness="0"
+                             SelectionChanged="PlanningItemsListBox_OnSelectionChanged">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Border Margin="0,0,0,10"
+                                        Padding="14,12"
+                                        Background="{StaticResource PanelMutedBackgroundBrush}"
+                                        BorderBrush="{StaticResource BorderBrushStrong}"
+                                        BorderThickness="1"
+                                        CornerRadius="16">
+                                    <StackPanel>
+                                        <TextBlock FontWeight="SemiBold"
+                                                   Text="{Binding Title}"
+                                                   TextWrapping="Wrap" />
+                                        <TextBlock Margin="0,6,0,0"
+                                                   Foreground="{StaticResource TextMutedBrush}"
+                                                   Text="{Binding ProjectTitle, TargetNullValue=Без проекта}" />
+                                        <TextBlock Margin="0,4,0,0"
+                                                   Foreground="{StaticResource AccentBrush}"
+                                                   Text="{Binding ScheduleText}" />
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Grid>
+            </Border>
+
+            <Border Grid.Column="2"
+                    Padding="22"
+                    Background="{StaticResource PanelBackgroundBrush}"
+                    BorderBrush="{StaticResource BorderBrushStrong}"
+                    BorderThickness="1"
+                    CornerRadius="20">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="18" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <StackPanel>
+                        <TextBlock Foreground="{StaticResource AccentBrush}"
+                                   FontWeight="SemiBold"
+                                   Text="Карточка" />
+                        <TextBlock Margin="0,8,0,0"
+                                   FontSize="28"
+                                   FontWeight="SemiBold"
+                                   Text="Заметка" />
+                        <TextBlock Margin="0,6,0,0"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   Text="Собирайте идеи и подготовку, а позже переносите в календарь." />
+                    </StackPanel>
+
+                    <ScrollViewer Grid.Row="2"
+                                  VerticalScrollBarVisibility="Auto">
+                        <StackPanel>
+                            <TextBlock FontWeight="SemiBold"
+                                       Text="Название" />
+                            <TextBox x:Name="PlanningTitleTextBox"
+                                     Margin="0,6,0,14"
+                                     Padding="10" />
+
+                            <TextBlock FontWeight="SemiBold"
+                                       Text="Проект" />
+                            <ComboBox x:Name="PlanningProjectComboBox"
+                                      Margin="0,6,0,14"
+                                      Padding="14,10"
+                                      Background="{StaticResource PanelSubtleBrush}"
+                                      BorderBrush="{StaticResource BorderBrushSoft}"
+                                      BorderThickness="1"
+                                      Foreground="{StaticResource TextPrimaryBrush}"
+                                      DisplayMemberPath="Title"
+                                      SelectedValuePath="Id" />
+
+                            <TextBlock FontWeight="SemiBold"
+                                       Text="Потенциальное время" />
+                            <Grid Margin="0,6,0,14">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="10" />
+                                    <ColumnDefinition Width="88" />
+                                    <ColumnDefinition Width="10" />
+                                    <ColumnDefinition Width="88" />
+                                    <ColumnDefinition Width="10" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <DatePicker x:Name="PlanningStartDatePicker"
+                                            Style="{StaticResource EditorDatePickerStyle}" />
+                                <TextBox x:Name="PlanningStartTimeTextBox"
+                                         Grid.Column="2"
+                                         Padding="10"
+                                         Text="19:00" />
+                                <TextBox x:Name="PlanningEndTimeTextBox"
+                                         Grid.Column="4"
+                                         Padding="10"
+                                         Text="21:00" />
+                                <Button Grid.Column="6"
+                                        Padding="12,8"
+                                        Background="{StaticResource PanelSubtleBrush}"
+                                        BorderBrush="{StaticResource BorderBrushSoft}"
+                                        Click="ClearPlanningDateButton_OnClick"
+                                        Content="Очистить" />
+                            </Grid>
+
+                            <CheckBox x:Name="PlanningAllDayCheckBox"
+                                      Margin="0,0,0,14"
+                                      Content="Весь день" />
+
+                            <TextBlock FontWeight="SemiBold"
+                                       Text="Заметки" />
+                            <TextBox x:Name="PlanningNotesTextBox"
+                                     Margin="0,6,0,14"
+                                     Padding="10"
+                                     AcceptsReturn="True"
+                                     TextWrapping="Wrap"
+                                     VerticalScrollBarVisibility="Auto"
+                                     Height="260" />
+
+                            <WrapPanel Margin="0,0,0,16">
+                                <Button Padding="16,8"
+                                        Margin="0,0,10,10"
+                                        Background="{StaticResource AccentStrongBrush}"
+                                        BorderBrush="{StaticResource AccentStrongBrush}"
+                                        Foreground="White"
+                                        Click="SavePlanningItemButton_OnClick"
+                                        Content="Сохранить" />
+                                <Button x:Name="MovePlanningItemToCalendarButton"
+                                        Padding="16,8"
+                                        Margin="0,0,10,10"
+                                        Background="{StaticResource PanelSubtleBrush}"
+                                        BorderBrush="{StaticResource BorderBrushSoft}"
+                                        Foreground="{StaticResource TextPrimaryBrush}"
+                                        Click="MovePlanningItemToCalendarButton_OnClick"
+                                        Content="В календарь"
+                                        IsEnabled="False" />
+                                <Button x:Name="ArchivePlanningItemButton"
+                                        Padding="16,8"
+                                        Margin="0,0,0,10"
+                                        Background="{StaticResource DangerSurfaceBrush}"
+                                        BorderBrush="{StaticResource DangerBorderBrush}"
+                                        Foreground="{StaticResource DangerBrush}"
+                                        Click="ArchivePlanningItemButton_OnClick"
+                                        Content="В архив"
+                                        IsEnabled="False" />
+                            </WrapPanel>
+
+                            <Border Padding="12"
+                                    Background="{StaticResource PanelMutedBackgroundBrush}"
+                                    BorderBrush="{StaticResource BorderBrushStrong}"
+                                    BorderThickness="1"
+                                    CornerRadius="12">
+                                <TextBlock x:Name="PlanningStatusTextBlock"
+                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                           TextWrapping="Wrap"
+                                           Text="Выберите заметку слева или создайте новую." />
+                            </Border>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <Grid x:Name="TasksPageContent"
+              Visibility="Collapsed">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition x:Name="TaskEditorSpacerColumn" Width="0" />
+                <ColumnDefinition x:Name="TaskEditorColumn" Width="0" />
+            </Grid.ColumnDefinitions>
+
+            <Border x:Name="TaskListPanelBorder"
+                    Padding="24"
+                    Background="{StaticResource PanelBackgroundBrush}"
+                    BorderBrush="{StaticResource BorderBrushStrong}"
+                    BorderThickness="1"
+                    CornerRadius="24">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="18" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="18" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel>
+                            <TextBlock Foreground="{StaticResource AccentBrush}"
+                                       FontWeight="SemiBold"
+                                       Text="Задачи" />
+                            <TextBlock Margin="0,8,0,0"
+                                       FontSize="30"
+                                       FontWeight="SemiBold"
+                                       Text="Сегодня и дальше" />
+                            <TextBlock x:Name="TaskCountTextBlock"
+                                       Margin="0,6,0,0"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       Text="Нет задач" />
+                        </StackPanel>
+
+                        <Button Grid.Column="1"
+                                Padding="16,10"
+                                VerticalAlignment="Top"
+                                Background="{StaticResource PanelSubtleBrush}"
+                                BorderBrush="{StaticResource BorderBrushSoft}"
+                                FontWeight="SemiBold"
+                                Click="OpenNewTaskButton_OnClick"
+                                Content="+ Новая карточка" />
+                    </Grid>
+
+                    <Border Grid.Row="2"
+                            Padding="16"
+                            Background="{StaticResource PanelMutedBackgroundBrush}"
+                            BorderBrush="{StaticResource BorderBrushStrong}"
+                            BorderThickness="1"
+                            CornerRadius="18">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="12" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBox x:Name="TaskQuickAddTextBox"
+                                     Padding="14,12"
+                                     Background="{StaticResource PanelSubtleBrush}"
+                                     BorderBrush="{StaticResource BorderBrushSoft}"
+                                     BorderThickness="1"
+                                     Foreground="{StaticResource TextPrimaryBrush}"
+                                     Text="Новая задача"
+                                     GotFocus="TaskQuickAddTextBox_OnGotFocus" />
+                            <Button Grid.Column="2"
+                                    Padding="18,11"
+                                    Background="{StaticResource AccentStrongBrush}"
+                                    BorderBrush="{StaticResource AccentStrongBrush}"
+                                    Foreground="White"
+                                    FontWeight="SemiBold"
+                                    Click="AddTaskItemButton_OnClick"
+                                    Content="+ Добавить" />
+                        </Grid>
+                    </Border>
+
+                    <ScrollViewer Grid.Row="4"
+                                  VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Disabled">
+                        <ScrollViewer.Resources>
+                            <Style TargetType="ScrollBar" BasedOn="{StaticResource AppScrollBarStyle}" />
+                        </ScrollViewer.Resources>
+                        <StackPanel>
+                            <Button Style="{StaticResource FlatChromeButtonStyle}"
+                                    HorizontalContentAlignment="Stretch"
+                                    Click="ToggleOverdueTaskGroupButton_OnClick">
+                                <Grid Margin="0,0,0,10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="8" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock x:Name="OverdueTaskGroupChevronTextBlock"
+                                           Foreground="{StaticResource TextMutedBrush}"
+                                           FontSize="16"
+                                           FontWeight="SemiBold"
+                                           Text="▾" />
+                                <TextBlock Grid.Column="2"
+                                           FontSize="18"
+                                           FontWeight="SemiBold"
+                                           Text="Просроченные" />
+                                <TextBlock x:Name="OverdueTaskCountTextBlock"
+                                           Grid.Column="3"
+                                           Foreground="{StaticResource DangerBrush}"
+                                           FontWeight="SemiBold"
+                                           Text="0" />
+                            </Grid>
+                            </Button>
+                            <TextBlock x:Name="OverdueTaskEmptyTextBlock"
+                                       Margin="0,0,0,18"
+                                       Foreground="{StaticResource TextMutedBrush}"
+                                       Text="Нет просроченных задач." />
+                            <ItemsControl x:Name="OverdueTaskItemsControl"
+                                          ItemTemplate="{StaticResource TaskItemTemplate}" />
+
+                            <Button Style="{StaticResource FlatChromeButtonStyle}"
+                                    HorizontalContentAlignment="Stretch"
+                                    Click="ToggleCurrentTaskGroupButton_OnClick">
+                                <Grid Margin="0,14,0,10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="8" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock x:Name="CurrentTaskGroupChevronTextBlock"
+                                           Foreground="{StaticResource TextMutedBrush}"
+                                           FontSize="16"
+                                           FontWeight="SemiBold"
+                                           Text="▾" />
+                                <TextBlock Grid.Column="2"
+                                           FontSize="18"
+                                           FontWeight="SemiBold"
+                                           Text="Актуальные" />
+                                <TextBlock x:Name="CurrentTaskCountTextBlock"
+                                           Grid.Column="3"
+                                           Foreground="{StaticResource AccentBrush}"
+                                           FontWeight="SemiBold"
+                                           Text="0" />
+                            </Grid>
+                            </Button>
+                            <TextBlock x:Name="CurrentTaskEmptyTextBlock"
+                                       Margin="0,0,0,18"
+                                       Foreground="{StaticResource TextMutedBrush}"
+                                       Text="Нет актуальных задач." />
+                            <ItemsControl x:Name="CurrentTaskItemsControl"
+                                          ItemTemplate="{StaticResource TaskItemTemplate}" />
+
+                            <Button Style="{StaticResource FlatChromeButtonStyle}"
+                                    HorizontalContentAlignment="Stretch"
+                                    Click="ToggleCompletedTaskGroupButton_OnClick">
+                                <Grid Margin="0,14,0,10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="8" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock x:Name="CompletedTaskGroupChevronTextBlock"
+                                           Foreground="{StaticResource TextMutedBrush}"
+                                           FontSize="16"
+                                           FontWeight="SemiBold"
+                                           Text="▸" />
+                                <TextBlock Grid.Column="2"
+                                           FontSize="18"
+                                           FontWeight="SemiBold"
+                                           Text="Выполненные" />
+                                <TextBlock x:Name="CompletedTaskCountTextBlock"
+                                           Grid.Column="3"
+                                           Foreground="{StaticResource TextMutedBrush}"
+                                           FontWeight="SemiBold"
+                                           Text="0" />
+                            </Grid>
+                            </Button>
+                            <TextBlock x:Name="CompletedTaskEmptyTextBlock"
+                                       Foreground="{StaticResource TextMutedBrush}"
+                                       Text="Нет выполненных задач." />
+                            <ItemsControl x:Name="CompletedTaskItemsControl"
+                                          ItemTemplate="{StaticResource TaskItemTemplate}" />
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <ListBox x:Name="TaskItemsListBox"
+                             Grid.Row="6"
+                             Background="Transparent"
+                             BorderThickness="0"
+                             HorizontalContentAlignment="Stretch"
+                             Visibility="Collapsed">
+                        <ListBox.ItemContainerStyle>
+                            <Style TargetType="ListBoxItem">
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                <Setter Property="Padding" Value="0" />
+                                <Setter Property="Margin" Value="0" />
+                                <Setter Property="Background" Value="Transparent" />
+                                <Setter Property="BorderBrush" Value="Transparent" />
+                                <Setter Property="BorderThickness" Value="0" />
+                                <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="ListBoxItem">
+                                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </ListBox.ItemContainerStyle>
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Border Margin="0,0,0,10"
+                                        Padding="14"
+                                        Background="{StaticResource PanelMutedBackgroundBrush}"
+                                        BorderBrush="{StaticResource BorderBrushStrong}"
+                                        BorderThickness="1"
+                                        CornerRadius="18">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="14" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="12" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <CheckBox VerticalAlignment="Top"
+                                                  IsChecked="{Binding IsCompleted, Mode=OneWay}"
+                                                  Style="{StaticResource TaskCompletionCheckBoxStyle}"
+                                                  Tag="{Binding Id}"
+                                                  Click="ToggleTaskItemCompletionCheckBox_OnClick" />
+
+                                        <StackPanel Grid.Column="2">
+                                            <TextBlock FontSize="16"
+                                                       FontWeight="SemiBold"
+                                                       Text="{Binding Title}"
+                                                       TextWrapping="Wrap">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsCompleted}" Value="True">
+                                                                <Setter Property="Foreground" Value="{StaticResource TextMutedBrush}" />
+                                                                <Setter Property="TextDecorations" Value="Strikethrough" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                            <WrapPanel Margin="0,7,0,0">
+                                                <TextBlock Margin="0,0,14,0"
+                                                           Foreground="{StaticResource TextMutedBrush}"
+                                                           Text="{Binding ProjectTitle, TargetNullValue=Без проекта}" />
+                                                <TextBlock Foreground="{StaticResource AccentBrush}"
+                                                           Text="{Binding DueText}" />
+                                            </WrapPanel>
+                                        </StackPanel>
+
+                                        <Button Grid.Column="4"
+                                                Padding="12,8"
+                                                VerticalAlignment="Center"
+                                                Background="{StaticResource PanelSubtleBrush}"
+                                                BorderBrush="{StaticResource BorderBrushSoft}"
+                                                Foreground="{StaticResource TextPrimaryBrush}"
+                                                Tag="{Binding Id}"
+                                                Click="OpenTaskItemButton_OnClick"
+                                                Content="Открыть" />
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Grid>
+            </Border>
+
+            <Border x:Name="TaskEditorPanelBorder"
+                    Grid.Column="2"
+                    Padding="22"
+                    Background="{StaticResource PanelBackgroundBrush}"
+                    BorderBrush="{StaticResource BorderBrushStrong}"
+                    BorderThickness="1"
+                    CornerRadius="20"
+                    Visibility="Collapsed">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="18" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel>
+                            <TextBlock Foreground="{StaticResource AccentBrush}"
+                                       FontWeight="SemiBold"
+                                       Text="Карточка" />
+                            <TextBlock Margin="0,8,0,0"
+                                       FontSize="28"
+                                       FontWeight="SemiBold"
+                                       Text="Задача" />
+                            <TextBlock Margin="0,6,0,0"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       Text="Детали открываются только из списка." />
+                        </StackPanel>
+
+                        <Button Grid.Column="1"
+                                Width="36"
+                                Height="36"
+                                Padding="0"
+                                HorizontalAlignment="Right"
+                                VerticalAlignment="Top"
+                                FontSize="16"
+                                FontWeight="SemiBold"
+                                Click="CloseTaskEditorButton_OnClick"
+                                Content="✕" />
+                    </Grid>
+
+                    <ScrollViewer Grid.Row="2"
+                                  VerticalScrollBarVisibility="Auto">
+                        <StackPanel>
+                            <TextBlock FontWeight="SemiBold"
+                                       Text="Название" />
+                            <TextBox x:Name="TaskTitleTextBox"
+                                     Margin="0,6,0,14"
+                                     Padding="10" />
+
+                            <TextBlock FontWeight="SemiBold"
+                                       Text="Проект" />
+                            <ComboBox x:Name="TaskProjectComboBox"
+                                      Margin="0,6,0,14"
+                                      Padding="14,10"
+                                      Background="{StaticResource PanelSubtleBrush}"
+                                      BorderBrush="{StaticResource BorderBrushSoft}"
+                                      BorderThickness="1"
+                                      Foreground="{StaticResource TextPrimaryBrush}"
+                                      DisplayMemberPath="Title"
+                                      SelectedValuePath="Id" />
+
+                            <TextBlock FontWeight="SemiBold"
+                                       Text="Срок" />
+                            <Grid Margin="0,6,0,14">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="10" />
+                                    <ColumnDefinition Width="80" />
+                                    <ColumnDefinition Width="10" />
+                                    <ColumnDefinition Width="80" />
+                                    <ColumnDefinition Width="10" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <DatePicker x:Name="TaskDueDatePicker"
+                                            Style="{StaticResource EditorDatePickerStyle}" />
+                                <TextBox x:Name="TaskStartTimeTextBox"
+                                         Grid.Column="2"
+                                         Padding="10"
+                                         Text="09:00" />
+                                <TextBox x:Name="TaskEndTimeTextBox"
+                                         Grid.Column="4"
+                                         Padding="10"
+                                         Text="10:00" />
+                                <Button Grid.Column="6"
+                                        Padding="12,8"
+                                        Background="{StaticResource PanelSubtleBrush}"
+                                        BorderBrush="{StaticResource BorderBrushSoft}"
+                                        Click="ClearTaskDueDateButton_OnClick"
+                                        Content="Очистить" />
+                            </Grid>
+
+                            <CheckBox x:Name="TaskOnlyThisDayCheckBox"
+                                      Margin="0,0,0,14"
+                                      Content="Только этот день" />
+
+                            <TextBlock FontWeight="SemiBold"
+                                       Text="Заметки" />
+                            <TextBox x:Name="TaskNotesTextBox"
+                                     Margin="0,6,0,14"
+                                     Padding="10"
+                                     AcceptsReturn="True"
+                                     TextWrapping="Wrap"
+                                     VerticalScrollBarVisibility="Auto"
+                                     Height="260" />
+
+                            <WrapPanel Margin="0,0,0,16">
+                                <Button Padding="16,8"
+                                        Margin="0,0,10,10"
+                                        Background="{StaticResource AccentStrongBrush}"
+                                        BorderBrush="{StaticResource AccentStrongBrush}"
+                                        Foreground="White"
+                                        Click="SaveTaskItemButton_OnClick"
+                                        Content="Сохранить" />
+                                <Button x:Name="CompleteTaskItemButton"
+                                        Padding="16,8"
+                                        Margin="0,0,10,10"
+                                        Background="{StaticResource PanelSubtleBrush}"
+                                        BorderBrush="{StaticResource BorderBrushSoft}"
+                                        Foreground="{StaticResource TextPrimaryBrush}"
+                                        Click="CompleteTaskItemButton_OnClick"
+                                        Content="Готово"
+                                        IsEnabled="False" />
+                                <Button x:Name="ReopenTaskItemButton"
+                                        Padding="16,8"
+                                        Margin="0,0,10,10"
+                                        Background="{StaticResource PanelSubtleBrush}"
+                                        BorderBrush="{StaticResource BorderBrushSoft}"
+                                        Foreground="{StaticResource TextPrimaryBrush}"
+                                        Click="ReopenTaskItemButton_OnClick"
+                                        Content="Вернуть"
+                                        IsEnabled="False" />
+                                <Button x:Name="ArchiveTaskItemButton"
+                                        Padding="16,8"
+                                        Margin="0,0,0,10"
+                                        Background="{StaticResource DangerSurfaceBrush}"
+                                        BorderBrush="{StaticResource DangerBorderBrush}"
+                                        Foreground="{StaticResource DangerBrush}"
+                                        Click="ArchiveTaskItemButton_OnClick"
+                                        Content="В архив"
+                                        IsEnabled="False" />
+                            </WrapPanel>
+
+                            <Border Padding="12"
+                                    Background="{StaticResource PanelMutedBackgroundBrush}"
+                                    BorderBrush="{StaticResource BorderBrushStrong}"
+                                    BorderThickness="1"
+                                    CornerRadius="12">
+                                <TextBlock x:Name="TaskStatusTextBlock"
+                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                           TextWrapping="Wrap"
+                                           Text="Выберите задачу слева или создайте новую." />
+                            </Border>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <Grid x:Name="ProjectsPageContent"
+              Visibility="Collapsed">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="360" />
+                <ColumnDefinition Width="18" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition x:Name="ProjectEditorSpacerColumn" Width="0" />
+                <ColumnDefinition x:Name="ProjectEditorColumn" Width="0" />
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0"
+                    Padding="22"
+                    Background="{StaticResource PanelBackgroundBrush}"
+                    BorderBrush="{StaticResource BorderBrushStrong}"
+                    BorderThickness="1"
+                    CornerRadius="20">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="18" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel>
+                            <TextBlock Foreground="{StaticResource AccentBrush}"
+                                       FontWeight="SemiBold"
+                                       Text="Контекст" />
+                            <TextBlock Margin="0,8,0,0"
+                                       FontSize="28"
+                                       FontWeight="SemiBold"
+                                       Text="Проекты" />
+                            <TextBlock x:Name="ProjectsCountTextBlock"
+                                       Margin="0,6,0,0"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       Text="Нет проектов" />
+                        </StackPanel>
+
+                        <Button Grid.Column="1"
+                                Padding="14,9"
+                                Background="{StaticResource AccentStrongBrush}"
+                                BorderBrush="{StaticResource AccentStrongBrush}"
+                                Foreground="White"
+                                FontWeight="SemiBold"
+                                Click="NewProjectButton_OnClick"
+                                Content="+ Проект" />
+                    </Grid>
+
+                    <ListBox x:Name="ProjectsListBox"
+                             Grid.Row="2"
+                             Background="Transparent"
+                             BorderThickness="0"
+                             SelectionChanged="ProjectsListBox_OnSelectionChanged"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                             ScrollViewer.VerticalScrollBarVisibility="Auto">
+                        <ListBox.ItemContainerStyle>
+                            <Style TargetType="ListBoxItem">
+                                <Setter Property="Padding" Value="14" />
+                                <Setter Property="Margin" Value="0,0,0,10" />
+                                <Setter Property="Background" Value="{StaticResource PanelMutedBackgroundBrush}" />
+                                <Setter Property="BorderBrush" Value="{StaticResource BorderBrushStrong}" />
+                                <Setter Property="BorderThickness" Value="1" />
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="ListBoxItem">
+                                            <Border x:Name="ProjectItemChrome"
+                                                    Padding="{TemplateBinding Padding}"
+                                                    Background="{TemplateBinding Background}"
+                                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                                    CornerRadius="16">
+                                                <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                                  VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="ProjectItemChrome" Property="Background" Value="{StaticResource PanelSubtleBrush}" />
+                                                    <Setter TargetName="ProjectItemChrome" Property="BorderBrush" Value="{StaticResource BorderBrushSoft}" />
+                                                </Trigger>
+                                                <Trigger Property="IsSelected" Value="True">
+                                                    <Setter TargetName="ProjectItemChrome" Property="Background" Value="{StaticResource AccentSoftBrush}" />
+                                                    <Setter TargetName="ProjectItemChrome" Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </ListBox.ItemContainerStyle>
+                        <ListBox.ItemTemplate>
+                            <DataTemplate DataType="{x:Type vm:ProjectListItemViewModel}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="12" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <Border Width="14"
+                                            Height="14"
+                                            Margin="0,4,0,0"
+                                            VerticalAlignment="Top"
+                                            Background="{Binding Color}"
+                                            CornerRadius="7" />
+
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock FontSize="16"
+                                                   FontWeight="SemiBold"
+                                                   Text="{Binding Title}"
+                                                   TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Margin="0,5,0,0"
+                                                   Foreground="{StaticResource AccentBrush}"
+                                                   FontWeight="SemiBold"
+                                                   Text="{Binding StatusText}" />
+                                        <TextBlock Margin="0,6,0,0"
+                                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                                   Text="{Binding Description}"
+                                                   TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Margin="0,8,0,0"
+                                                   Foreground="{StaticResource TextMutedBrush}"
+                                                   Text="{Binding TagsText}"
+                                                   TextTrimming="CharacterEllipsis" />
+                                    </StackPanel>
+                                </Grid>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Grid>
+            </Border>
+
+            <Border Grid.Column="2"
+                    Padding="34"
+                    Background="{StaticResource PanelBackgroundBrush}"
+                    BorderBrush="{StaticResource BorderBrushStrong}"
+                    BorderThickness="1"
+                    CornerRadius="20">
+                <Grid>
+                    <StackPanel x:Name="ProjectEmptyStatePanel"
+                                Width="520"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center">
+                        <TextBlock Foreground="{StaticResource AccentBrush}"
+                                   FontWeight="SemiBold"
+                                   Text="Основа планирования" />
+                        <TextBlock Margin="0,12,0,0"
+                                   FontSize="30"
+                                   FontWeight="SemiBold"
+                                   Text="Выберите или создайте проект"
+                                   TextWrapping="Wrap" />
+                        <TextBlock Margin="0,12,0,0"
+                                   FontSize="15"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   Text="Проекты сохраняются локально и позже станут контекстом для задач, рутин, трекеров и календарных элементов."
+                                   TextWrapping="Wrap" />
+                    </StackPanel>
+
+                    <StackPanel x:Name="ProjectSelectedPanel"
+                                Visibility="Collapsed">
+                        <Border Width="56"
+                                Height="56"
+                                HorizontalAlignment="Left"
+                                Background="{Binding SelectedItem.Color, ElementName=ProjectsListBox}"
+                                CornerRadius="18" />
+                        <TextBlock x:Name="SelectedProjectTitleTextBlock"
+                                   Margin="0,18,0,0"
+                                   FontSize="34"
+                                   FontWeight="SemiBold"
+                                   TextWrapping="Wrap" />
+                        <TextBlock x:Name="SelectedProjectStatusTextBlock"
+                                   Margin="0,8,0,0"
+                                   Foreground="{StaticResource AccentBrush}"
+                                   FontWeight="SemiBold" />
+                        <TextBlock x:Name="SelectedProjectDescriptionTextBlock"
+                                   Margin="0,18,0,0"
+                                   FontSize="15"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   TextWrapping="Wrap" />
+                        <TextBlock x:Name="SelectedProjectTagsTextBlock"
+                                   Margin="0,18,0,0"
+                                   Foreground="{StaticResource TextMutedBrush}"
+                                   TextWrapping="Wrap" />
+                        <Button Margin="0,24,0,0"
+                                Padding="16,9"
+                                HorizontalAlignment="Left"
+                                Background="{StaticResource PanelSubtleBrush}"
+                                BorderBrush="{StaticResource BorderBrushSoft}"
+                                Click="EditSelectedProjectButton_OnClick"
+                                Content="Редактировать" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <Border x:Name="ProjectEditorPanelBorder"
+                    Grid.Column="4"
+                    Padding="0"
+                    Background="{StaticResource PanelBackgroundBrush}"
+                    BorderBrush="{StaticResource BorderBrushStrong}"
+                    BorderThickness="1"
+                    CornerRadius="20"
+                    Visibility="Collapsed">
+                <ScrollViewer Margin="18,18,0,18"
+                              VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel Margin="0,0,18,0">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock FontSize="24"
+                                           FontWeight="SemiBold"
+                                           Text="Проект" />
+                                <TextBlock x:Name="ProjectEditorSubtitleTextBlock"
+                                           Margin="0,6,0,18"
+                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                           Text="Новый контекст" />
+                            </StackPanel>
+                            <Button Grid.Column="1"
+                                    Width="36"
+                                    Height="36"
+                                    Padding="0"
+                                    HorizontalAlignment="Right"
+                                    VerticalAlignment="Top"
+                                    FontSize="16"
+                                    FontWeight="SemiBold"
+                                    Click="CloseProjectEditorButton_OnClick"
+                                    Content="✕" />
+                        </Grid>
+
+                        <TextBlock FontWeight="SemiBold"
+                                   Text="Название" />
+                        <TextBox x:Name="ProjectTitleTextBox"
+                                 Margin="0,6,0,14"
+                                 Padding="10" />
+
+                        <TextBlock FontWeight="SemiBold"
+                                   Text="Описание" />
+                        <TextBox x:Name="ProjectDescriptionTextBox"
+                                 Margin="0,6,0,14"
+                                 Padding="10"
+                                 AcceptsReturn="True"
+                                 Height="96"
+                                 TextWrapping="Wrap"
+                                 VerticalScrollBarVisibility="Auto" />
+
+                        <TextBlock FontWeight="SemiBold"
+                                   Text="Цвет" />
+                        <ComboBox x:Name="ProjectColorComboBox"
+                                  Margin="0,6,0,14"
+                                  Padding="14,10"
+                                  Style="{StaticResource EditorFieldComboBoxStyle}">
+                            <ComboBoxItem Content="Синий" Tag="#FF4F8DFD" />
+                            <ComboBoxItem Content="Зелёный" Tag="#FF34A853" />
+                            <ComboBoxItem Content="Жёлтый" Tag="#FFF9AB00" />
+                            <ComboBoxItem Content="Красный" Tag="#FFEA4335" />
+                            <ComboBoxItem Content="Фиолетовый" Tag="#FFA78BFA" />
+                        </ComboBox>
+
+                        <TextBlock FontWeight="SemiBold"
+                                   Text="Статус" />
+                        <ComboBox x:Name="ProjectStatusComboBox"
+                                  Margin="0,6,0,14"
+                                  Padding="14,10"
+                                  Style="{StaticResource EditorFieldComboBoxStyle}">
+                            <ComboBoxItem Content="Активен" Tag="Active" />
+                            <ComboBoxItem Content="На паузе" Tag="Paused" />
+                            <ComboBoxItem Content="Завершён" Tag="Completed" />
+                        </ComboBox>
+
+                        <TextBlock FontWeight="SemiBold"
+                                   Text="Теги" />
+                        <TextBox x:Name="ProjectTagsTextBox"
+                                 Margin="0,6,0,8"
+                                 Padding="10" />
+                        <TextBlock Margin="0,0,0,18"
+                                   Foreground="{StaticResource TextMutedBrush}"
+                                   Text="Через запятую: дом, здоровье, работа" />
+
+                        <WrapPanel Margin="0,0,0,16">
+                            <Button Padding="16,8"
+                                    Margin="0,0,10,10"
+                                    Background="{StaticResource AccentStrongBrush}"
+                                    BorderBrush="{StaticResource AccentStrongBrush}"
+                                    Foreground="White"
+                                    Click="SaveProjectButton_OnClick"
+                                    Content="Сохранить" />
+                            <Button Padding="16,8"
+                                    Margin="0,0,0,10"
+                                    Background="{StaticResource PanelSubtleBrush}"
+                                    BorderBrush="{StaticResource BorderBrushSoft}"
+                                    Click="NewProjectButton_OnClick"
+                                    Content="Новый проект" />
+                        </WrapPanel>
+
+                        <Border Padding="12"
+                                Background="{StaticResource PanelMutedBackgroundBrush}"
+                                BorderBrush="{StaticResource BorderBrushStrong}"
+                                BorderThickness="1"
+                                CornerRadius="12">
+                            <TextBlock x:Name="ProjectStatusTextBlock"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       TextWrapping="Wrap" />
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+        </Grid>
 
         <Grid x:Name="CalendarPageContent">
         <Grid.ColumnDefinitions>

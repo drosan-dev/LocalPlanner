@@ -11,6 +11,12 @@ public partial class App : Application
 {
     public EventRepository? EventRepository { get; private set; }
 
+    public ProjectRepository? ProjectRepository { get; private set; }
+
+    public PlanningRepository? PlanningRepository { get; private set; }
+
+    public TaskRepository? TaskRepository { get; private set; }
+
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
@@ -28,5 +34,8 @@ public partial class App : Application
         var initializer = new DatabaseInitializer(databasePath);
         initializer.Initialize();
         EventRepository = new EventRepository(initializer.ConnectionString);
+        ProjectRepository = new ProjectRepository(initializer.ConnectionString);
+        PlanningRepository = new PlanningRepository(initializer.ConnectionString);
+        TaskRepository = new TaskRepository(initializer.ConnectionString);
     }
 }
