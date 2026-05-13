@@ -2427,8 +2427,8 @@
 
         <Grid x:Name="CalendarPageContent">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="290" />
-            <ColumnDefinition Width="18" />
+            <ColumnDefinition Width="0" />
+            <ColumnDefinition Width="0" />
             <ColumnDefinition Width="*" />
             <ColumnDefinition x:Name="EditorSpacerColumn" Width="0" />
             <ColumnDefinition x:Name="EditorColumn" Width="0" />
@@ -2439,7 +2439,8 @@
                 Background="{StaticResource PanelBackgroundBrush}"
                 BorderBrush="{StaticResource BorderBrushStrong}"
                 BorderThickness="1"
-                CornerRadius="20">
+                CornerRadius="20"
+                Visibility="Collapsed">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
