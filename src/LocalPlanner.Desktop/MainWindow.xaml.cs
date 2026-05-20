@@ -51,6 +51,8 @@ public partial class MainWindow : Window
     private readonly ObservableCollection<TodayOverviewItemViewModel> _todayTaskItems = new();
     private readonly ObservableCollection<TodayOverviewItemViewModel> _todayOpportunityItems = new();
     private readonly ObservableCollection<TimeGridEventViewModel> _todayTimelineEvents = new();
+    private readonly ObservableCollection<PlanningCalendarItemViewModel> _planningDayTimelineItems = new();
+    private readonly ObservableCollection<PlanningCalendarItemViewModel> _planningDayAllDayItems = new();
 
     private Guid? _selectedEventId;
     private bool _isSynchronizingSelection;
@@ -72,7 +74,15 @@ public partial class MainWindow : Window
     private Guid? _selectedProjectId;
     private bool _isSidebarOpen = true;
     private Guid? _selectedPlanningItemId;
+    private Guid? _selectedPlanningEventId;
+    private DateTime _planningSelectedDate = DateTime.Today;
+    private bool _planningCreatesCommittedEvent;
     private bool _planningQuickAddPlaceholderArmed = true;
+    private bool _isPlanningEditorUpdating;
+    private bool _isPlanningTimelineSelecting;
+    private double _planningTimelineSelectionStartY;
+    private UIElement? _planningTimelineCaptureElement;
+    private readonly DispatcherTimer _planningHeaderPopupCloseTimer = new() { Interval = TimeSpan.FromMilliseconds(160) };
     private Guid? _selectedTaskItemId;
     private bool _taskQuickAddPlaceholderArmed = true;
     private bool _isOverdueTaskGroupExpanded = true;
@@ -85,6 +95,8 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+
+        _planningHeaderPopupCloseTimer.Tick += PlanningHeaderPopupCloseTimer_OnTick;
 
         _eventRepository = ((App)Application.Current).EventRepository
             ?? throw new InvalidOperationException("\u0425\u0440\u0430\u043D\u0438\u043B\u0438\u0449\u0435 \u0441\u043E\u0431\u044B\u0442\u0438\u0439 \u043D\u0435 \u0438\u043D\u0438\u0446\u0438\u0430\u043B\u0438\u0437\u0438\u0440\u043E\u0432\u0430\u043D\u043E.");
@@ -116,7 +128,12 @@ public partial class MainWindow : Window
         TodayTaskItemsControl.ItemsSource = _todayTaskItems;
         TodayOpportunityItemsControl.ItemsSource = _todayOpportunityItems;
         ProjectsListBox.ItemsSource = _projects;
-        PlanningItemsListBox.ItemsSource = _planningItems;
+        PlanningHoursItemsControl.ItemsSource = _timeSlots;
+        PlanningSlotLinesItemsControl.ItemsSource = _timeSlots;
+        PlanningTimelineItemsControl.ItemsSource = _planningDayTimelineItems;
+        PlanningAllDayItemsControl.ItemsSource = _planningDayAllDayItems;
+        PlanningHoverCalendar.SelectedDate = _planningSelectedDate;
+        PlanningHoverCalendar.DisplayDate = _planningSelectedDate;
         OverdueTaskItemsControl.ItemsSource = _overdueTaskItems;
         CurrentTaskItemsControl.ItemsSource = _currentTaskItems;
         CompletedTaskItemsControl.ItemsSource = _completedTaskItems;
@@ -154,6 +171,7 @@ public partial class MainWindow : Window
         RefreshCalendarChrome();
         RefreshCalendarMarkers();
         RefreshTodayPage();
+        RefreshPlanningCalendar();
 
         StatusTextBlock.Text = _allEvents.Count == 0
             ? "\u041A\u0430\u043B\u0435\u043D\u0434\u0430\u0440\u044C \u043F\u0443\u0441\u0442. \u0421\u043E\u0437\u0434\u0430\u0439\u0442\u0435 \u043F\u0435\u0440\u0432\u043E\u0435 \u0441\u043E\u0431\u044B\u0442\u0438\u0435."
@@ -188,7 +206,7 @@ public partial class MainWindow : Window
         _planningQuickAddPlaceholderArmed = true;
         LoadPlanningProjectOptions();
         ClearPlanningEditor();
-        PlanningStatusTextBlock.Text = "\u0412\u044B\u0431\u0435\u0440\u0438\u0442\u0435 \u0437\u0430\u043C\u0435\u0442\u043A\u0443 \u0441\u043B\u0435\u0432\u0430 \u0438\u043B\u0438 \u0441\u043E\u0437\u0434\u0430\u0439\u0442\u0435 \u043D\u043E\u0432\u0443\u044E.";
+        PlanningStatusTextBlock.Text = "\u0412\u044B\u0431\u0435\u0440\u0438\u0442\u0435 \u0430\u043A\u0442\u0438\u0432\u043D\u043E\u0441\u0442\u044C \u0441\u043F\u0440\u0430\u0432\u0430 \u0438\u043B\u0438 \u0441\u043E\u0437\u0434\u0430\u0439\u0442\u0435 \u043D\u043E\u0432\u0443\u044E.";
     }
 
     private void LoadPlanningProjectOptions()
@@ -223,47 +241,233 @@ public partial class MainWindow : Window
             _planningItems.Add(new PlanningItemListItemViewModel(item, projectTitle));
         }
 
-        PlanningCountTextBlock.Text = _planningItems.Count == 0
-            ? "\u041D\u0435\u0442 \u0437\u0430\u043C\u0435\u0442\u043E\u043A"
-            : $"\u0412\u0441\u0435\u0433\u043E \u0437\u0430\u043C\u0435\u0442\u043E\u043A: {_planningItems.Count}";
-
-        if (selectItemId is not null)
-        {
-            PlanningItemsListBox.SelectedItem = _planningItems.FirstOrDefault(vm => vm.Id == selectItemId.Value);
-        }
-        else if (_planningItems.Count > 0)
-        {
-            PlanningItemsListBox.SelectedIndex = 0;
-        }
-        else
+        if (selectItemId is null && _planningItems.Count == 0 && _selectedPlanningItemId is null && _selectedPlanningEventId is null)
         {
             ClearPlanningEditor();
-            PlanningStatusTextBlock.Text = "\u0418\u043D\u0431\u043E\u043A\u0441 \u043F\u0443\u0441\u0442. \u0414\u043E\u0431\u0430\u0432\u044C\u0442\u0435 \u043F\u0435\u0440\u0432\u0443\u044E \u0437\u0430\u043C\u0435\u0442\u043A\u0443 \u0432\u044B\u0448\u0435.";
+            PlanningStatusTextBlock.Text = "\u0421\u043F\u0438\u0441\u043E\u043A \u043F\u043E\u043A\u0430 \u043F\u0443\u0441\u0442. \u0414\u043E\u0431\u0430\u0432\u044C\u0442\u0435 \u043F\u0435\u0440\u0432\u0443\u044E \u0430\u043A\u0442\u0438\u0432\u043D\u043E\u0441\u0442\u044C \u0432\u044B\u0448\u0435.";
         }
 
         RefreshTodayPage();
+        RefreshPlanningCalendar();
+    }
+
+    private bool IsPlanningUiReady()
+    {
+        return PlanningHoverCalendar is not null &&
+               PlanningDayTitlePopup is not null &&
+               PlanningDayTitleTextBlock is not null &&
+               PlanningDaySubtitleTextBlock is not null &&
+               PlanningTimelineEmptyTextBlock is not null &&
+               PlanningAllDayEmptyTextBlock is not null &&
+               PlanningOptionalModeRadioButton is not null &&
+               PlanningCommittedModeRadioButton is not null &&
+               PlanningDeleteOrArchiveButton is not null &&
+               PlanningEditorSubtitleTextBlock is not null &&
+               PlanningProjectSection is not null &&
+               MovePlanningItemToCalendarButton is not null &&
+               PlanningTitleTextBox is not null &&
+               PlanningNotesTextBox is not null &&
+               PlanningStartDatePicker is not null &&
+               PlanningStartTimeTextBox is not null &&
+               PlanningEndTimeTextBox is not null &&
+               PlanningAllDayCheckBox is not null &&
+               PlanningProjectComboBox is not null &&
+               PlanningStatusTextBlock is not null;
+    }
+
+    private void RefreshPlanningCalendar()
+    {
+        if (!IsPlanningUiReady())
+        {
+            return;
+        }
+
+        var selectedDate = _planningSelectedDate.Date;
+        _planningDayTimelineItems.Clear();
+        _planningDayAllDayItems.Clear();
+
+        var confirmedEvents = _allEvents
+            .Where(item => EventOccursOnDay(item, selectedDate))
+            .OrderBy(item => item.IsAllDay ? 0 : 1)
+            .ThenBy(GetDisplayStart)
+            .ToList();
+
+        foreach (var item in confirmedEvents)
+        {
+            if (item.IsAllDay)
+            {
+                _planningDayAllDayItems.Add(PlanningCalendarItemViewModel.FromEvent(
+                    item,
+                    selectedDate,
+                    0d,
+                    0d,
+                    isEditing: _selectedPlanningEventId == item.Id));
+                continue;
+            }
+
+            var displayStart = GetDisplayStart(item);
+            var displayEnd = GetDisplayEnd(item);
+            var (clampedStart, clampedEnd, top, height) = CalculateTimelineBounds(selectedDate, displayStart, displayEnd);
+            if (clampedEnd > clampedStart)
+            {
+                _planningDayTimelineItems.Add(PlanningCalendarItemViewModel.FromEvent(
+                    item,
+                    selectedDate,
+                    top,
+                    height,
+                    isEditing: _selectedPlanningEventId == item.Id));
+            }
+        }
+
+        foreach (var item in _planningRepository.GetActiveItems()
+                     .Where(item => TryGetPlanningLocalBounds(item, out var start, out var end) &&
+                                    PlanningItemOccursOnDay(item, start, end, selectedDate))
+                     .OrderBy(item => item.IsAllDay ? 0 : 1)
+                     .ThenBy(item => TryGetPlanningLocalBounds(item, out var start, out _) ? start : DateTime.MaxValue))
+        {
+            if (!TryGetPlanningLocalBounds(item, out var startLocal, out var endLocal))
+            {
+                continue;
+            }
+
+            if (item.IsAllDay)
+            {
+                _planningDayAllDayItems.Add(PlanningCalendarItemViewModel.FromPlanningItem(
+                    item,
+                    startLocal,
+                    endLocal,
+                    0d,
+                    0d,
+                    isEditing: _selectedPlanningItemId == item.Id));
+                continue;
+            }
+
+            var (clampedStart, clampedEnd, top, height) = CalculateTimelineBounds(selectedDate, startLocal, endLocal);
+            if (clampedEnd > clampedStart)
+            {
+                _planningDayTimelineItems.Add(PlanningCalendarItemViewModel.FromPlanningItem(
+                    item,
+                    clampedStart,
+                    clampedEnd,
+                    top,
+                    height,
+                    isEditing: _selectedPlanningItemId == item.Id));
+            }
+        }
+
+        if (TryBuildPlanningEditorPreview(selectedDate, out var previewItem))
+        {
+            if (previewItem.IsAllDay)
+            {
+                _planningDayAllDayItems.Add(previewItem);
+            }
+            else
+            {
+                _planningDayTimelineItems.Add(previewItem);
+            }
+        }
+
+        var confirmedCount = _planningDayTimelineItems.Count(item => !item.IsDraft) +
+                             _planningDayAllDayItems.Count(item => !item.IsDraft);
+        var draftCount = _planningDayTimelineItems.Count(item => item.IsDraft) +
+                         _planningDayAllDayItems.Count(item => item.IsDraft);
+
+        PlanningDayTitleTextBlock.Text = selectedDate.ToString("dddd, d MMMM", RussianCulture);
+        PlanningDaySubtitleTextBlock.Text = confirmedCount == 0 && draftCount == 0
+            ? "День свободен: можно собирать черновик."
+            : $"Занято: {confirmedCount} · черновики: {draftCount}";
+        PlanningTimelineEmptyTextBlock.Visibility = _planningDayTimelineItems.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        PlanningAllDayEmptyTextBlock.Visibility = _planningDayAllDayItems.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void SetPlanningSelectedDate(DateTime date)
+    {
+        if (PlanningHoverCalendar is null)
+        {
+            _planningSelectedDate = date.Date;
+            return;
+        }
+
+        _planningSelectedDate = date.Date;
+        _isSynchronizingSelection = true;
+        PlanningHoverCalendar.SelectedDate = _planningSelectedDate;
+        PlanningHoverCalendar.DisplayDate = _planningSelectedDate;
+        _isSynchronizingSelection = false;
+        RefreshPlanningCalendar();
+    }
+
+    private void PreviousPlanningDayButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        SetPlanningSelectedDate(_planningSelectedDate.AddDays(-1));
+    }
+
+    private void TodayPlanningDayButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        SetPlanningSelectedDate(DateTime.Today);
+    }
+
+    private void NextPlanningDayButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        SetPlanningSelectedDate(_planningSelectedDate.AddDays(1));
+    }
+
+    private void PlanningCalendarItemButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { Tag: PlanningCalendarItemViewModel item })
+        {
+            return;
+        }
+
+        if (!item.IsDraft)
+        {
+            if (_eventRepository.GetActiveEvents().FirstOrDefault(x => x.Id == item.Id) is { } calendarEvent)
+            {
+                ShowPlanningEvent(calendarEvent);
+            }
+            return;
+        }
+
+        if (_planningRepository.GetById(item.Id) is { } planningItem)
+        {
+            ShowPlanningItem(planningItem);
+        }
     }
 
     private void ClearPlanningEditor()
     {
+        _isPlanningEditorUpdating = true;
         _selectedPlanningItemId = null;
+        _selectedPlanningEventId = null;
+        _planningCreatesCommittedEvent = false;
+        PlanningOptionalModeRadioButton.IsChecked = true;
         PlanningTitleTextBox.Text = string.Empty;
         PlanningNotesTextBox.Text = string.Empty;
         PlanningProjectComboBox.SelectedIndex = 0;
-        PlanningStartDatePicker.SelectedDate = null;
-        PlanningStartTimeTextBox.Text = "19:00";
-        PlanningEndTimeTextBox.Text = "21:00";
+        PlanningStartDatePicker.SelectedDate = _planningSelectedDate;
+        PlanningStartTimeTextBox.Text = "09:00";
+        PlanningEndTimeTextBox.Text = "10:00";
         PlanningAllDayCheckBox.IsChecked = false;
-        ArchivePlanningItemButton.IsEnabled = false;
+        PlanningDeleteOrArchiveButton.IsEnabled = false;
         MovePlanningItemToCalendarButton.IsEnabled = false;
+        _isPlanningEditorUpdating = false;
+        RefreshPlanningEditorChrome();
+        RefreshPlanningCalendar();
     }
 
     private void ShowPlanningItem(PlanningItem item)
     {
+        _isPlanningEditorUpdating = true;
         _selectedPlanningItemId = item.Id;
+        _selectedPlanningEventId = null;
+        _planningCreatesCommittedEvent = false;
+        PlanningOptionalModeRadioButton.IsChecked = true;
         PlanningTitleTextBox.Text = item.Title;
         PlanningNotesTextBox.Text = item.Notes ?? string.Empty;
         ApplyPlanningDateToEditor(item);
+        if (TryGetPlanningLocalBounds(item, out var startLocal, out _))
+        {
+            SetPlanningSelectedDate(startLocal.Date);
+        }
 
         var selectedProjectId = item.ProjectId;
         if (selectedProjectId is null)
@@ -275,9 +479,70 @@ public partial class MainWindow : Window
             PlanningProjectComboBox.SelectedValue = selectedProjectId;
         }
 
-        ArchivePlanningItemButton.IsEnabled = true;
+        PlanningDeleteOrArchiveButton.IsEnabled = true;
         MovePlanningItemToCalendarButton.IsEnabled = true;
-        PlanningStatusTextBlock.Text = "\u0418\u0437\u043C\u0435\u043D\u0438\u0442\u0435 \u043A\u0430\u0440\u0442\u043E\u0447\u043A\u0443 \u0438 \u043D\u0430\u0436\u043C\u0438\u0442\u0435 \u00AB\u0421\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C\u00BB.";
+        _isPlanningEditorUpdating = false;
+        RefreshPlanningEditorChrome();
+        RefreshPlanningCalendar();
+        PlanningStatusTextBlock.Text = "\u0418\u0437\u043C\u0435\u043D\u0438\u0442\u0435 \u0447\u0435\u0440\u043D\u043E\u0432\u0438\u043A \u0438 \u043D\u0430\u0436\u043C\u0438\u0442\u0435 \u00AB\u0421\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C\u00BB.";
+    }
+
+    private void ShowPlanningEvent(CalendarEvent calendarEvent)
+    {
+        _isPlanningEditorUpdating = true;
+        _selectedPlanningItemId = null;
+        _selectedPlanningEventId = calendarEvent.Id;
+        _planningCreatesCommittedEvent = true;
+        PlanningCommittedModeRadioButton.IsChecked = true;
+        PlanningTitleTextBox.Text = calendarEvent.Title;
+        PlanningNotesTextBox.Text = calendarEvent.Description ?? string.Empty;
+        PlanningProjectComboBox.SelectedIndex = 0;
+        ApplyPlanningDateToEditor(calendarEvent);
+        var timezone = ResolvePlanningTimezone(calendarEvent.TimezoneId);
+        var startLocal = TimeZoneInfo.ConvertTimeFromUtc(calendarEvent.StartsAtUtc, timezone);
+        SetPlanningSelectedDate(startLocal.Date);
+        _isPlanningEditorUpdating = false;
+        RefreshPlanningEditorChrome();
+        RefreshPlanningCalendar();
+        PlanningStatusTextBlock.Text = "\u0418\u0437\u043C\u0435\u043D\u0438\u0442\u0435 \u043E\u0431\u044F\u0437\u0430\u0442\u0435\u043B\u044C\u043D\u043E\u0435 \u0441\u043E\u0431\u044B\u0442\u0438\u0435 \u0438 \u043D\u0430\u0436\u043C\u0438\u0442\u0435 \u00AB\u0421\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C\u00BB.";
+    }
+
+    private void RefreshPlanningEditorChrome()
+    {
+        if (!IsPlanningUiReady())
+        {
+            return;
+        }
+
+        var isCommitted = _planningCreatesCommittedEvent;
+        MovePlanningItemToCalendarButton.Visibility = isCommitted ? Visibility.Collapsed : Visibility.Visible;
+        PlanningProjectSection.Visibility = isCommitted ? Visibility.Collapsed : Visibility.Visible;
+        PlanningDeleteOrArchiveButton.Content = isCommitted ? "\u0423\u0434\u0430\u043B\u0438\u0442\u044C" : "\u0412 \u0430\u0440\u0445\u0438\u0432";
+        PlanningEditorSubtitleTextBlock.Text = isCommitted
+            ? "\u041E\u0431\u044F\u0437\u0430\u0442\u0435\u043B\u044C\u043D\u043E\u0435 \u0441\u043E\u0431\u044B\u0442\u0438\u0435 \u0441\u0440\u0430\u0437\u0443 \u0437\u0430\u043D\u0438\u043C\u0430\u0435\u0442 \u0432\u0440\u0435\u043C\u044F \u0432 \u043A\u0430\u043B\u0435\u043D\u0434\u0430\u0440\u0435."
+            : "\u041D\u0435\u043E\u0431\u044F\u0437\u0430\u0442\u0435\u043B\u044C\u043D\u044B\u0439 \u0432\u0430\u0440\u0438\u0430\u043D\u0442 \u043E\u0441\u0442\u0430\u0435\u0442\u0441\u044F \u0447\u0435\u0440\u043D\u043E\u0432\u0438\u043A\u043E\u043C, \u043F\u043E\u043A\u0430 \u0432\u044B \u043D\u0435 \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u0435 \u0435\u0433\u043E.";
+        PlanningDeleteOrArchiveButton.IsEnabled = isCommitted ? _selectedPlanningEventId is not null : _selectedPlanningItemId is not null;
+    }
+
+    private void PlanningModeRadioButton_OnChecked(object sender, RoutedEventArgs e)
+    {
+        if (_isPlanningEditorUpdating || !IsPlanningUiReady())
+        {
+            return;
+        }
+
+        _planningCreatesCommittedEvent = PlanningCommittedModeRadioButton.IsChecked == true;
+        if (_planningCreatesCommittedEvent)
+        {
+            _selectedPlanningItemId = null;
+        }
+        else
+        {
+            _selectedPlanningEventId = null;
+        }
+
+        RefreshPlanningEditorChrome();
+        RefreshPlanningCalendar();
     }
 
     private void PlanningQuickAddTextBox_OnGotFocus(object sender, RoutedEventArgs e)
@@ -299,45 +564,33 @@ public partial class MainWindow : Window
             title = "\u041D\u043E\u0432\u0430\u044F \u0437\u0430\u043C\u0435\u0442\u043A\u0430";
         }
 
-        var saved = _planningRepository.Save(new PlanningItemEditorState
-        {
-            Title = title,
-            Notes = string.Empty,
-            ProjectId = null,
-            TimezoneId = TimeZoneInfo.Local.Id
-        });
-
+        ClearPlanningEditor();
+        PlanningTitleTextBox.Text = title;
         PlanningQuickAddTextBox.Text = "\u041D\u043E\u0432\u0430\u044F \u0437\u0430\u043C\u0435\u0442\u043A\u0430";
         _planningQuickAddPlaceholderArmed = true;
-        LoadPlanningItems(selectItemId: saved.Id);
-        PlanningItemsListBox.Focus();
-    }
-
-    private void PlanningItemsListBox_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (PlanningItemsListBox.SelectedItem is not PlanningItemListItemViewModel selected)
-        {
-            ClearPlanningEditor();
-            return;
-        }
-
-        var item = _planningRepository.GetById(selected.Id);
-        if (item is null)
-        {
-            LoadPlanningItems(selectItemId: null);
-            return;
-        }
-
-        ShowPlanningItem(item);
+        PlanningTitleTextBox.Focus();
+        PlanningTitleTextBox.SelectAll();
+        PlanningStatusTextBlock.Text = "\u0427\u0435\u0440\u043D\u043E\u0432\u0438\u043A \u043F\u043E\u0434\u0433\u043E\u0442\u043E\u0432\u043B\u0435\u043D. \u0417\u0430\u0434\u0430\u0439\u0442\u0435 \u0432\u0440\u0435\u043C\u044F \u043D\u0430 \u0448\u043A\u0430\u043B\u0435 \u0438 \u0441\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u0435.";
+        RefreshPlanningCalendar();
     }
 
     private void SavePlanningItemButton_OnClick(object sender, RoutedEventArgs e)
     {
         try
         {
-            var saved = SavePlanningEditor();
-            LoadPlanningItems(selectItemId: saved.Id);
-            PlanningStatusTextBlock.Text = "\u0421\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u043E.";
+            if (_planningCreatesCommittedEvent)
+            {
+                var savedEvent = SavePlanningCalendarEvent();
+                LoadEvents();
+                ShowPlanningEvent(savedEvent);
+                PlanningStatusTextBlock.Text = "\u041E\u0431\u044F\u0437\u0430\u0442\u0435\u043B\u044C\u043D\u043E\u0435 \u0441\u043E\u0431\u044B\u0442\u0438\u0435 \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u043E.";
+            }
+            else
+            {
+                var saved = SavePlanningEditor();
+                LoadPlanningItems(selectItemId: saved.Id);
+                PlanningStatusTextBlock.Text = "\u0427\u0435\u0440\u043D\u043E\u0432\u0438\u043A \u0441\u043E\u0445\u0440\u0430\u043D\u0435\u043D.";
+            }
         }
         catch (Exception ex)
         {
@@ -347,6 +600,20 @@ public partial class MainWindow : Window
 
     private void ArchivePlanningItemButton_OnClick(object sender, RoutedEventArgs e)
     {
+        if (_planningCreatesCommittedEvent)
+        {
+            if (_selectedPlanningEventId is null)
+            {
+                return;
+            }
+
+            _eventRepository.SoftDelete(_selectedPlanningEventId.Value);
+            ClearPlanningEditor();
+            LoadEvents();
+            PlanningStatusTextBlock.Text = "\u0421\u043E\u0431\u044B\u0442\u0438\u0435 \u0443\u0434\u0430\u043B\u0435\u043D\u043E.";
+            return;
+        }
+
         if (_selectedPlanningItemId is null)
         {
             return;
@@ -355,7 +622,7 @@ public partial class MainWindow : Window
         _planningRepository.Archive(_selectedPlanningItemId.Value);
         ClearPlanningEditor();
         LoadPlanningItems(selectItemId: null);
-        PlanningStatusTextBlock.Text = "\u0417\u0430\u043C\u0435\u0442\u043A\u0430 \u043E\u0442\u043F\u0440\u0430\u0432\u043B\u0435\u043D\u0430 \u0432 \u0430\u0440\u0445\u0438\u0432.";
+        PlanningStatusTextBlock.Text = "\u0427\u0435\u0440\u043D\u043E\u0432\u0438\u043A \u043E\u0442\u043F\u0440\u0430\u0432\u043B\u0435\u043D \u0432 \u0430\u0440\u0445\u0438\u0432.";
     }
 
     private void MovePlanningItemToCalendarButton_OnClick(object sender, RoutedEventArgs e)
@@ -426,6 +693,11 @@ public partial class MainWindow : Window
         return _planningRepository.Save(ReadPlanningEditorState());
     }
 
+    private CalendarEvent SavePlanningCalendarEvent()
+    {
+        return _eventRepository.Save(ReadPlanningEventEditorState());
+    }
+
     private PlanningItemEditorState ReadPlanningEditorState()
     {
         Guid? projectId = PlanningProjectComboBox.SelectedValue switch
@@ -474,6 +746,26 @@ public partial class MainWindow : Window
         };
     }
 
+    private EventEditorState ReadPlanningEventEditorState()
+    {
+        if (!TryReadPlanningEditorBounds(out var startLocal, out var endLocal, out var isAllDay))
+        {
+            throw new InvalidOperationException("\u0417\u0430\u0434\u0430\u0439\u0442\u0435 \u0434\u0430\u0442\u0443 \u0438 \u0432\u0440\u0435\u043C\u044F \u043D\u0430 \u0448\u043A\u0430\u043B\u0435.");
+        }
+
+        return new EventEditorState
+        {
+            Id = _selectedPlanningEventId,
+            Title = PlanningTitleTextBox.Text,
+            Description = PlanningNotesTextBox.Text,
+            StartLocal = startLocal,
+            EndLocal = endLocal,
+            TimezoneId = TimeZoneInfo.Local.Id,
+            IsAllDay = isAllDay,
+            RRuleText = string.Empty
+        };
+    }
+
     private void ApplyPlanningDateToEditor(PlanningItem item)
     {
         if (item.PlannedStartsAtUtc is null)
@@ -495,6 +787,329 @@ public partial class MainWindow : Window
         PlanningStartTimeTextBox.Text = startLocal.ToString("HH:mm");
         PlanningEndTimeTextBox.Text = endLocal.ToString("HH:mm");
         PlanningAllDayCheckBox.IsChecked = item.IsAllDay;
+    }
+
+    private void ApplyPlanningDateToEditor(CalendarEvent calendarEvent)
+    {
+        var timezone = ResolvePlanningTimezone(calendarEvent.TimezoneId);
+        var startLocal = TimeZoneInfo.ConvertTimeFromUtc(calendarEvent.StartsAtUtc, timezone);
+        var endLocal = TimeZoneInfo.ConvertTimeFromUtc(calendarEvent.EndsAtUtc, timezone);
+        PlanningStartDatePicker.SelectedDate = startLocal.Date;
+        PlanningStartTimeTextBox.Text = startLocal.ToString("HH:mm");
+        PlanningEndTimeTextBox.Text = endLocal.ToString("HH:mm");
+        PlanningAllDayCheckBox.IsChecked = calendarEvent.IsAllDay;
+    }
+
+    private void PlanningEditorField_OnChanged(object sender, RoutedEventArgs e)
+    {
+        if (_isPlanningEditorUpdating || !IsPlanningUiReady())
+        {
+            return;
+        }
+
+        RefreshPlanningCalendar();
+    }
+
+    private void PlanningEditorTextBox_OnTextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (_isPlanningEditorUpdating || !IsPlanningUiReady())
+        {
+            return;
+        }
+
+        RefreshPlanningCalendar();
+    }
+
+    private void PlanningStartDatePicker_OnSelectedDateChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_isPlanningEditorUpdating || !IsPlanningUiReady())
+        {
+            return;
+        }
+
+        if (PlanningStartDatePicker.SelectedDate is { } selectedDate)
+        {
+            SetPlanningSelectedDate(selectedDate.Date);
+        }
+
+        RefreshPlanningCalendar();
+    }
+
+    private void PlanningHoverCalendar_OnSelectedDatesChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (!IsPlanningUiReady())
+        {
+            return;
+        }
+
+        if (_isSynchronizingSelection || PlanningHoverCalendar.SelectedDate is not { } selectedDate)
+        {
+            return;
+        }
+
+        SetPlanningSelectedDate(selectedDate.Date);
+        if (_selectedPlanningItemId is null && _selectedPlanningEventId is null && PlanningStartDatePicker is not null)
+        {
+            _isPlanningEditorUpdating = true;
+            PlanningStartDatePicker.SelectedDate = selectedDate.Date;
+            _isPlanningEditorUpdating = false;
+        }
+
+        PlanningDayTitlePopup.IsOpen = false;
+        RefreshPlanningCalendar();
+    }
+
+    private void PlanningTimelineCreateSurface_OnMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not UIElement element)
+        {
+            return;
+        }
+
+        _isPlanningTimelineSelecting = true;
+        _planningTimelineSelectionStartY = e.GetPosition(element).Y;
+        _planningTimelineCaptureElement = element;
+        element.CaptureMouse();
+        UpdatePlanningEditorFromTimelineSelection(_planningTimelineSelectionStartY, _planningTimelineSelectionStartY);
+        e.Handled = true;
+    }
+
+    private void PlanningTimelineCreateSurface_OnMouseMove(object sender, MouseEventArgs e)
+    {
+        if (!_isPlanningTimelineSelecting || _planningTimelineCaptureElement is not UIElement)
+        {
+            return;
+        }
+
+        var element = _planningTimelineCaptureElement;
+        UpdatePlanningEditorFromTimelineSelection(_planningTimelineSelectionStartY, e.GetPosition(element).Y);
+    }
+
+    private void PlanningTimelineCreateSurface_OnMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (!_isPlanningTimelineSelecting)
+        {
+            return;
+        }
+
+        if (_planningTimelineCaptureElement is not null)
+        {
+            _planningTimelineCaptureElement.ReleaseMouseCapture();
+        }
+
+        _isPlanningTimelineSelecting = false;
+        _planningTimelineCaptureElement = null;
+        RefreshPlanningCalendar();
+        e.Handled = true;
+    }
+
+    private void PlanningTimelineCreateSurface_OnLostMouseCapture(object sender, MouseEventArgs e)
+    {
+        _isPlanningTimelineSelecting = false;
+        _planningTimelineCaptureElement = null;
+    }
+
+    private void UpdatePlanningEditorFromTimelineSelection(double startY, double endY)
+    {
+        var minY = Math.Max(0d, Math.Min(startY, endY));
+        var maxY = Math.Max(0d, Math.Max(startY, endY));
+        var startMinutes = Math.Clamp(SnapMinutes(minY / HourSlotHeight * 60d), 0, MinutesPerDay - MinutesStep);
+        var endMinutes = Math.Clamp(SnapMinutes(maxY / HourSlotHeight * 60d), 0, MinutesPerDay);
+        if (endMinutes <= startMinutes)
+        {
+            endMinutes = Math.Min(MinutesPerDay, startMinutes + MinimumDurationMinutes);
+        }
+
+        var start = _planningSelectedDate.Date.AddMinutes(startMinutes);
+        var end = _planningSelectedDate.Date.AddMinutes(endMinutes);
+
+        _isPlanningEditorUpdating = true;
+        PlanningStartDatePicker.SelectedDate = _planningSelectedDate.Date;
+        PlanningAllDayCheckBox.IsChecked = false;
+        PlanningStartTimeTextBox.Text = start.ToString("HH:mm");
+        PlanningEndTimeTextBox.Text = end.ToString("HH:mm");
+        _isPlanningEditorUpdating = false;
+
+        if (string.IsNullOrWhiteSpace(PlanningTitleTextBox.Text))
+        {
+            PlanningTitleTextBox.Text = _planningCreatesCommittedEvent
+                ? "\u041D\u043E\u0432\u043E\u0435 \u0441\u043E\u0431\u044B\u0442\u0438\u0435"
+                : "\u041D\u043E\u0432\u044B\u0439 \u0447\u0435\u0440\u043D\u043E\u0432\u0438\u043A";
+        }
+
+        RefreshPlanningCalendar();
+    }
+
+    private void PlanningDayTitleHotspot_OnMouseEnter(object sender, MouseEventArgs e)
+    {
+        if (!IsPlanningUiReady())
+        {
+            return;
+        }
+
+        _planningHeaderPopupCloseTimer.Stop();
+        PlanningDayTitlePopup.IsOpen = true;
+    }
+
+    private void PlanningDayTitleHotspot_OnMouseLeave(object sender, MouseEventArgs e)
+    {
+        BeginPlanningHeaderPopupClose();
+    }
+
+    private void PlanningDayTitlePopup_OnMouseEnter(object sender, MouseEventArgs e)
+    {
+        _planningHeaderPopupCloseTimer.Stop();
+    }
+
+    private void PlanningDayTitlePopup_OnMouseLeave(object sender, MouseEventArgs e)
+    {
+        BeginPlanningHeaderPopupClose();
+    }
+
+    private void BeginPlanningHeaderPopupClose()
+    {
+        if (PlanningDayTitlePopup is null)
+        {
+            return;
+        }
+
+        _planningHeaderPopupCloseTimer.Stop();
+        _planningHeaderPopupCloseTimer.Start();
+    }
+
+    private void PlanningHeaderPopupCloseTimer_OnTick(object? sender, EventArgs e)
+    {
+        _planningHeaderPopupCloseTimer.Stop();
+        if (PlanningDayTitlePopup is not null)
+        {
+            PlanningDayTitlePopup.IsOpen = false;
+        }
+    }
+
+    private bool TryReadPlanningEditorBounds(out DateTime startLocal, out DateTime endLocal, out bool isAllDay)
+    {
+        startLocal = default;
+        endLocal = default;
+        isAllDay = PlanningAllDayCheckBox.IsChecked == true;
+
+        if (PlanningStartDatePicker.SelectedDate is not { } selectedDate)
+        {
+            return false;
+        }
+
+        if (isAllDay)
+        {
+            startLocal = selectedDate.Date;
+            endLocal = selectedDate.Date.AddDays(1);
+            return true;
+        }
+
+        if (!TimeSpan.TryParseExact(PlanningStartTimeTextBox.Text, "hh\\:mm", CultureInfo.InvariantCulture, out var startTime) ||
+            !TimeSpan.TryParseExact(PlanningEndTimeTextBox.Text, "hh\\:mm", CultureInfo.InvariantCulture, out var endTime))
+        {
+            return false;
+        }
+
+        startLocal = selectedDate.Date.Add(startTime);
+        endLocal = selectedDate.Date.Add(endTime);
+        if (endLocal <= startLocal)
+        {
+            endLocal = startLocal.AddMinutes(MinimumDurationMinutes);
+        }
+
+        return true;
+    }
+
+    private bool TryBuildPlanningEditorPreview(DateTime selectedDate, out PlanningCalendarItemViewModel previewItem)
+    {
+        previewItem = null!;
+
+        if (_selectedPlanningItemId is not null || _selectedPlanningEventId is not null)
+        {
+            return false;
+        }
+
+        var title = PlanningTitleTextBox.Text.Trim();
+        if (string.IsNullOrWhiteSpace(title) || !TryReadPlanningEditorBounds(out var startLocal, out var endLocal, out var isAllDay))
+        {
+            return false;
+        }
+
+        if (!PlanningItemOccursOnDay(new PlanningItem { IsAllDay = isAllDay }, startLocal, endLocal, selectedDate))
+        {
+            return false;
+        }
+
+        var (_, _, top, height) = CalculateTimelineBounds(selectedDate, startLocal, endLocal);
+        previewItem = _planningCreatesCommittedEvent
+            ? PlanningCalendarItemViewModel.FromEvent(
+                new EventListItemViewModel(new CalendarEvent
+                {
+                    Id = Guid.Empty,
+                    Title = title,
+                    Description = PlanningNotesTextBox.Text,
+                    StartsAtUtc = startLocal.ToUniversalTime(),
+                    EndsAtUtc = endLocal.ToUniversalTime(),
+                    TimezoneId = TimeZoneInfo.Local.Id,
+                    IsAllDay = isAllDay
+                }),
+                selectedDate,
+                top,
+                height,
+                isEditing: true)
+            : PlanningCalendarItemViewModel.FromPlanningItem(
+                new PlanningItem
+                {
+                    Id = Guid.Empty,
+                    Title = title,
+                    Notes = PlanningNotesTextBox.Text,
+                    IsAllDay = isAllDay
+                },
+                startLocal,
+                endLocal,
+                top,
+                height,
+                isEditing: true);
+
+        return true;
+    }
+
+    private static bool PlanningItemOccursOnDay(PlanningItem item, DateTime startLocal, DateTime endLocal, DateTime day)
+    {
+        if (item.IsAllDay && endLocal.TimeOfDay == TimeSpan.Zero)
+        {
+            endLocal = endLocal.AddTicks(-1);
+        }
+
+        var dayStart = day.Date;
+        var dayEnd = dayStart.AddDays(1);
+        return startLocal < dayEnd && endLocal > dayStart;
+    }
+
+    private static bool TryGetPlanningLocalBounds(PlanningItem item, out DateTime startLocal, out DateTime endLocal)
+    {
+        startLocal = default;
+        endLocal = default;
+
+        if (item.PlannedStartsAtUtc is null)
+        {
+            return false;
+        }
+
+        var timezone = ResolvePlanningTimezone(item.TimezoneId);
+        startLocal = TimeZoneInfo.ConvertTimeFromUtc(item.PlannedStartsAtUtc.Value, timezone);
+        endLocal = item.PlannedEndsAtUtc is null
+            ? item.IsAllDay
+                ? startLocal.Date.AddDays(1)
+                : startLocal.AddHours(1)
+            : TimeZoneInfo.ConvertTimeFromUtc(item.PlannedEndsAtUtc.Value, timezone);
+
+        if (endLocal <= startLocal)
+        {
+            endLocal = item.IsAllDay ? startLocal.Date.AddDays(1) : startLocal.AddMinutes(MinimumDurationMinutes);
+        }
+
+        return true;
     }
 
     private void InitializeTaskEditor()

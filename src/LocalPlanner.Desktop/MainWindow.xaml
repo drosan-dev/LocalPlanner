@@ -990,6 +990,132 @@
             </Grid>
         </DataTemplate>
 
+        <DataTemplate x:Key="PlanningTimelineItemTemplate" DataType="{x:Type vm:PlanningCalendarItemViewModel}">
+            <Button Padding="0"
+                    HorizontalContentAlignment="Stretch"
+                    Style="{StaticResource FlatChromeButtonStyle}"
+                    Click="PlanningCalendarItemButton_OnClick"
+                    Tag="{Binding}">
+                <Grid Width="{Binding RelativeSource={RelativeSource AncestorType=Canvas}, Path=ActualWidth}"
+                      Height="{Binding Height}">
+                    <Grid Margin="6,0,6,0"
+                          Opacity="{Binding Opacity}">
+                        <Border x:Name="PlanningTimelineFocusGlow"
+                                Margin="-2"
+                                Background="#00000000"
+                                BorderBrush="{Binding AccentBrush}"
+                                BorderThickness="2"
+                                CornerRadius="14"
+                                Opacity="0"
+                                SnapsToDevicePixels="True" />
+                        <Border x:Name="PlanningTimelineCard"
+                                Background="{Binding SurfaceBrush}"
+                                BorderBrush="{Binding BorderBrush}"
+                                BorderThickness="1"
+                                CornerRadius="12" />
+                        <Rectangle x:Name="PlanningTimelineDraftOutline"
+                                   Margin="0.5"
+                                   RadiusX="12"
+                                   RadiusY="12"
+                                   Stroke="{Binding AccentBrush}"
+                                   StrokeThickness="1.2"
+                                   StrokeDashArray="4,3"
+                                   Visibility="Collapsed" />
+                        <Grid Margin="10,8,10,10">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <TextBlock FontSize="12"
+                                       FontWeight="{Binding TitleWeight}"
+                                       Foreground="{StaticResource TextPrimaryBrush}"
+                                       Text="{Binding Title}"
+                                       TextTrimming="CharacterEllipsis" />
+                            <TextBlock Grid.Row="1"
+                                       Margin="0,2,0,0"
+                                       FontSize="11"
+                                       Foreground="{Binding AccentBrush}"
+                                       Text="{Binding TimeLabel}" />
+                            <TextBlock Grid.Row="2"
+                                       Margin="0,4,0,0"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       Text="{Binding Description}"
+                                       TextWrapping="Wrap" />
+                        </Grid>
+                    </Grid>
+                </Grid>
+            </Button>
+            <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding IsDraft}" Value="True">
+                    <Setter TargetName="PlanningTimelineCard" Property="BorderBrush" Value="#66F7C873" />
+                    <Setter TargetName="PlanningTimelineCard" Property="BorderThickness" Value="1" />
+                    <Setter TargetName="PlanningTimelineDraftOutline" Property="Visibility" Value="Visible" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding IsEditing}" Value="True">
+                    <Setter TargetName="PlanningTimelineFocusGlow" Property="Opacity" Value="0.95" />
+                    <Setter TargetName="PlanningTimelineCard" Property="BorderBrush" Value="{Binding AccentBrush}" />
+                    <Setter TargetName="PlanningTimelineCard" Property="BorderThickness" Value="2" />
+                </DataTrigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
+
+        <DataTemplate x:Key="PlanningAllDayItemTemplate" DataType="{x:Type vm:PlanningCalendarItemViewModel}">
+            <Button Margin="0,0,8,8"
+                    Padding="0"
+                    Style="{StaticResource FlatChromeButtonStyle}"
+                    Click="PlanningCalendarItemButton_OnClick"
+                    Tag="{Binding}">
+                <Grid Opacity="{Binding Opacity}">
+                    <Border x:Name="PlanningAllDayFocusGlow"
+                            Margin="-2"
+                            Background="#00000000"
+                            BorderBrush="{Binding AccentBrush}"
+                            BorderThickness="2"
+                            CornerRadius="14"
+                            Opacity="0"
+                            SnapsToDevicePixels="True" />
+                    <Border x:Name="PlanningAllDayCard"
+                            Padding="10,7"
+                            Background="{Binding SurfaceBrush}"
+                            BorderBrush="{Binding BorderBrush}"
+                            BorderThickness="1"
+                            CornerRadius="12" />
+                    <Rectangle x:Name="PlanningAllDayDraftOutline"
+                               Margin="0.5"
+                               RadiusX="12"
+                               RadiusY="12"
+                               Stroke="{Binding AccentBrush}"
+                               StrokeThickness="1.1"
+                               StrokeDashArray="4,3"
+                               Visibility="Collapsed" />
+                    <DockPanel LastChildFill="True"
+                               Margin="10,7,10,7">
+                        <StackPanel>
+                            <TextBlock FontWeight="{Binding TitleWeight}"
+                                       Text="{Binding Title}"
+                                       TextWrapping="Wrap" />
+                            <TextBlock Margin="0,2,0,0"
+                                       FontSize="11"
+                                       Foreground="{Binding AccentBrush}"
+                                       Text="{Binding TimeLabel}" />
+                        </StackPanel>
+                    </DockPanel>
+                </Grid>
+            </Button>
+            <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding IsDraft}" Value="True">
+                    <Setter TargetName="PlanningAllDayCard" Property="BorderBrush" Value="#66F7C873" />
+                    <Setter TargetName="PlanningAllDayDraftOutline" Property="Visibility" Value="Visible" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding IsEditing}" Value="True">
+                    <Setter TargetName="PlanningAllDayFocusGlow" Property="Opacity" Value="0.95" />
+                    <Setter TargetName="PlanningAllDayCard" Property="BorderBrush" Value="{Binding AccentBrush}" />
+                    <Setter TargetName="PlanningAllDayCard" Property="BorderThickness" Value="2" />
+                </DataTrigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
+
         <DataTemplate x:Key="TodayOverviewItemTemplate" DataType="{x:Type vm:TodayOverviewItemViewModel}">
             <Border Margin="0,0,0,10"
                     Padding="13,11"
@@ -1324,7 +1450,7 @@
                                 <TextBlock x:Name="TodayOpportunitiesEmptyTextBlock"
                                            Margin="0,0,0,12"
                                            Foreground="{StaticResource TextMutedBrush}"
-                                           Text="Инбокс планирования пуст." />
+                                           Text="Пока нет черновиков." />
                                 <ItemsControl x:Name="TodayOpportunityItemsControl"
                                               ItemTemplate="{StaticResource TodayOverviewItemTemplate}" />
                             </StackPanel>
@@ -1428,9 +1554,9 @@
         <Grid x:Name="PlanningPageContent"
               Visibility="Collapsed">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="400" />
-                <ColumnDefinition Width="18" />
                 <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="18" />
+                <ColumnDefinition Width="400" />
             </Grid.ColumnDefinitions>
 
             <Border Grid.Column="0"
@@ -1442,24 +1568,207 @@
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="14" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="18" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel>
+                            <TextBlock Foreground="{StaticResource AccentBrush}"
+                                       FontWeight="SemiBold"
+                                       Text="Черновой календарь" />
+                            <Border x:Name="PlanningDayTitleHotspot"
+                                    Margin="0,8,0,0"
+                                    Padding="0,0,4,2"
+                                    HorizontalAlignment="Left"
+                                    Background="Transparent"
+                                    MouseEnter="PlanningDayTitleHotspot_OnMouseEnter"
+                                    MouseLeave="PlanningDayTitleHotspot_OnMouseLeave">
+                                <TextBlock x:Name="PlanningDayTitleTextBlock"
+                                           FontSize="28"
+                                           FontWeight="SemiBold"
+                                           Text="Сегодня" />
+                            </Border>
+                            <Popup x:Name="PlanningDayTitlePopup"
+                                   PlacementTarget="{Binding ElementName=PlanningDayTitleHotspot}"
+                                   Placement="Bottom"
+                                   StaysOpen="True"
+                                   AllowsTransparency="True"
+                                   PopupAnimation="Fade">
+                                <Border Padding="12"
+                                        Background="{StaticResource PanelBackgroundBrush}"
+                                        BorderBrush="{StaticResource BorderBrushStrong}"
+                                        BorderThickness="1"
+                                        CornerRadius="16"
+                                        MouseEnter="PlanningDayTitlePopup_OnMouseEnter"
+                                        MouseLeave="PlanningDayTitlePopup_OnMouseLeave">
+                                    <Calendar x:Name="PlanningHoverCalendar"
+                                              Width="230"
+                                              Loaded="Calendar_OnLoaded"
+                                              SelectedDatesChanged="PlanningHoverCalendar_OnSelectedDatesChanged" />
+                                </Border>
+                            </Popup>
+                            <TextBlock x:Name="PlanningDaySubtitleTextBlock"
+                                       Margin="0,6,0,0"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       Text="Реальные события и потенциальные активности" />
+                        </StackPanel>
+
+                        <WrapPanel Grid.Column="1"
+                                   VerticalAlignment="Top">
+                            <Button Padding="12,8"
+                                    Margin="0,0,8,0"
+                                    Background="{StaticResource PanelSubtleBrush}"
+                                    BorderBrush="{StaticResource BorderBrushSoft}"
+                                    Click="PreviousPlanningDayButton_OnClick"
+                                    Content="‹" />
+                            <Button Padding="12,8"
+                                    Margin="0,0,8,0"
+                                    Background="{StaticResource PanelSubtleBrush}"
+                                    BorderBrush="{StaticResource BorderBrushSoft}"
+                                    Click="TodayPlanningDayButton_OnClick"
+                                    Content="Сегодня" />
+                            <Button Padding="12,8"
+                                    Background="{StaticResource PanelSubtleBrush}"
+                                    BorderBrush="{StaticResource BorderBrushSoft}"
+                                    Click="NextPlanningDayButton_OnClick"
+                                    Content="›" />
+                        </WrapPanel>
+                    </Grid>
+
+                    <Border Grid.Row="2"
+                            Padding="0"
+                            Background="Transparent"
+                            BorderThickness="0" />
+
+                    <Grid Grid.Row="4">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="10" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+
+                        <Border Padding="12"
+                                Background="{StaticResource PanelMutedBackgroundBrush}"
+                                BorderBrush="{StaticResource BorderBrushStrong}"
+                                BorderThickness="1"
+                                CornerRadius="14">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="12" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock VerticalAlignment="Top"
+                                           FontWeight="SemiBold"
+                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                           Text="На день" />
+                                <ItemsControl x:Name="PlanningAllDayItemsControl"
+                                              Grid.Column="2"
+                                              ItemTemplate="{StaticResource PlanningAllDayItemTemplate}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <WrapPanel />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                </ItemsControl>
+                                <TextBlock x:Name="PlanningAllDayEmptyTextBlock"
+                                           Grid.Column="2"
+                                           Foreground="{StaticResource TextMutedBrush}"
+                                           Text="Нет активностей без точного времени."
+                                           Visibility="Collapsed" />
+                            </Grid>
+                        </Border>
+
+                        <ScrollViewer Grid.Row="2"
+                                      VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Disabled">
+                            <ScrollViewer.Resources>
+                                <Style TargetType="ScrollBar" BasedOn="{StaticResource AppScrollBarStyle}" />
+                            </ScrollViewer.Resources>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="58" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <ItemsControl x:Name="PlanningHoursItemsControl"
+                                              Grid.Column="0"
+                                              ItemTemplate="{StaticResource TimelineHourTemplate}" />
+
+                                <Grid Grid.Column="1"
+                                      Height="1536">
+                                    <Border Background="Transparent"
+                                            MouseLeftButtonDown="PlanningTimelineCreateSurface_OnMouseLeftButtonDown"
+                                            MouseLeftButtonUp="PlanningTimelineCreateSurface_OnMouseLeftButtonUp"
+                                            MouseMove="PlanningTimelineCreateSurface_OnMouseMove"
+                                            LostMouseCapture="PlanningTimelineCreateSurface_OnLostMouseCapture" />
+
+                                    <ItemsControl x:Name="PlanningSlotLinesItemsControl"
+                                                  ItemTemplate="{StaticResource TimelineSlotLineTemplate}" />
+
+                                    <TextBlock x:Name="PlanningTimelineEmptyTextBlock"
+                                               Margin="14,14,14,0"
+                                               VerticalAlignment="Top"
+                                               Foreground="{StaticResource TextMutedBrush}"
+                                               Text="В этот день пока нет событий и черновиков со временем."
+                                               Visibility="Collapsed" />
+
+                                    <ItemsControl x:Name="PlanningTimelineItemsControl"
+                                                  ItemTemplate="{StaticResource PlanningTimelineItemTemplate}">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <Canvas />
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemContainerStyle>
+                                            <Style TargetType="ContentPresenter">
+                                                <Setter Property="Canvas.Left" Value="0" />
+                                                <Setter Property="Canvas.Top" Value="{Binding Top}" />
+                                            </Style>
+                                        </ItemsControl.ItemContainerStyle>
+                                    </ItemsControl>
+                                </Grid>
+                            </Grid>
+                        </ScrollViewer>
+                    </Grid>
+                </Grid>
+            </Border>
+
+            <Border Grid.Column="2"
+                    Padding="22"
+                    Background="{StaticResource PanelBackgroundBrush}"
+                    BorderBrush="{StaticResource BorderBrushStrong}"
+                    BorderThickness="1"
+                    CornerRadius="20">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
                         <RowDefinition Height="18" />
                         <RowDefinition Height="Auto" />
-                        <RowDefinition Height="12" />
+                        <RowDefinition Height="18" />
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
 
                     <StackPanel>
                         <TextBlock Foreground="{StaticResource AccentBrush}"
                                    FontWeight="SemiBold"
-                                   Text="Планирование" />
+                                   Text="Карточка" />
                         <TextBlock Margin="0,8,0,0"
-                                   FontSize="28"
+                                   FontSize="24"
                                    FontWeight="SemiBold"
-                                   Text="Инбокс" />
-                        <TextBlock x:Name="PlanningCountTextBlock"
+                                   Text="Активность" />
+                        <TextBlock x:Name="PlanningEditorSubtitleTextBlock"
                                    Margin="0,6,0,0"
                                    Foreground="{StaticResource TextSecondaryBrush}"
-                                   Text="Нет заметок" />
+                                   Text="Черновик можно держать в планировании, пока он не станет реальным событием." />
                     </StackPanel>
 
                     <Border Grid.Row="2"
@@ -1493,86 +1802,59 @@
                         </Grid>
                     </Border>
 
-                    <ListBox x:Name="PlanningItemsListBox"
-                             Grid.Row="4"
-                             Background="Transparent"
-                             BorderThickness="0"
-                             SelectionChanged="PlanningItemsListBox_OnSelectionChanged">
-                        <ListBox.ItemTemplate>
-                            <DataTemplate>
-                                <Border Margin="0,0,0,10"
-                                        Padding="14,12"
-                                        Background="{StaticResource PanelMutedBackgroundBrush}"
-                                        BorderBrush="{StaticResource BorderBrushStrong}"
-                                        BorderThickness="1"
-                                        CornerRadius="16">
-                                    <StackPanel>
-                                        <TextBlock FontWeight="SemiBold"
-                                                   Text="{Binding Title}"
-                                                   TextWrapping="Wrap" />
-                                        <TextBlock Margin="0,6,0,0"
-                                                   Foreground="{StaticResource TextMutedBrush}"
-                                                   Text="{Binding ProjectTitle, TargetNullValue=Без проекта}" />
-                                        <TextBlock Margin="0,4,0,0"
-                                                   Foreground="{StaticResource AccentBrush}"
-                                                   Text="{Binding ScheduleText}" />
-                                    </StackPanel>
-                                </Border>
-                            </DataTemplate>
-                        </ListBox.ItemTemplate>
-                    </ListBox>
-                </Grid>
-            </Border>
-
-            <Border Grid.Column="2"
-                    Padding="22"
-                    Background="{StaticResource PanelBackgroundBrush}"
-                    BorderBrush="{StaticResource BorderBrushStrong}"
-                    BorderThickness="1"
-                    CornerRadius="20">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="18" />
-                        <RowDefinition Height="*" />
-                    </Grid.RowDefinitions>
-
-                    <StackPanel>
-                        <TextBlock Foreground="{StaticResource AccentBrush}"
-                                   FontWeight="SemiBold"
-                                   Text="Карточка" />
-                        <TextBlock Margin="0,8,0,0"
-                                   FontSize="28"
-                                   FontWeight="SemiBold"
-                                   Text="Заметка" />
-                        <TextBlock Margin="0,6,0,0"
-                                   Foreground="{StaticResource TextSecondaryBrush}"
-                                   Text="Собирайте идеи и подготовку, а позже переносите в календарь." />
-                    </StackPanel>
-
-                    <ScrollViewer Grid.Row="2"
+                    <ScrollViewer Grid.Row="4"
                                   VerticalScrollBarVisibility="Auto">
+                        <ScrollViewer.Resources>
+                            <Style TargetType="ScrollBar" BasedOn="{StaticResource AppScrollBarStyle}" />
+                        </ScrollViewer.Resources>
                         <StackPanel>
+                            <StackPanel Margin="0,0,0,14">
+                                <TextBlock FontWeight="SemiBold"
+                                           Text="Тип события" />
+                                <WrapPanel Margin="0,8,0,0">
+                                    <RadioButton x:Name="PlanningOptionalModeRadioButton"
+                                                 Margin="0,0,8,0"
+                                                 Padding="12,8"
+                                                 Checked="PlanningModeRadioButton_OnChecked"
+                                                 GroupName="PlanningMode"
+                                                 IsChecked="True"
+                                                 Style="{StaticResource SidebarNavButtonStyle}">
+                                        <TextBlock Text="Необязательное" />
+                                    </RadioButton>
+                                    <RadioButton x:Name="PlanningCommittedModeRadioButton"
+                                                 Padding="12,8"
+                                                 Checked="PlanningModeRadioButton_OnChecked"
+                                                 GroupName="PlanningMode"
+                                                 Style="{StaticResource SidebarNavButtonStyle}">
+                                        <TextBlock Text="Обязательное" />
+                                    </RadioButton>
+                                </WrapPanel>
+                            </StackPanel>
+
                             <TextBlock FontWeight="SemiBold"
                                        Text="Название" />
                             <TextBox x:Name="PlanningTitleTextBox"
                                      Margin="0,6,0,14"
-                                     Padding="10" />
+                                     Padding="10"
+                                     TextChanged="PlanningEditorTextBox_OnTextChanged" />
+
+                            <StackPanel x:Name="PlanningProjectSection">
+                                <TextBlock FontWeight="SemiBold"
+                                           Text="Проект" />
+                                <ComboBox x:Name="PlanningProjectComboBox"
+                                          Margin="0,6,0,14"
+                                          Padding="14,10"
+                                          Background="{StaticResource PanelSubtleBrush}"
+                                          BorderBrush="{StaticResource BorderBrushSoft}"
+                                          BorderThickness="1"
+                                          Foreground="{StaticResource TextPrimaryBrush}"
+                                          DisplayMemberPath="Title"
+                                          SelectedValuePath="Id"
+                                          SelectionChanged="PlanningEditorField_OnChanged" />
+                            </StackPanel>
 
                             <TextBlock FontWeight="SemiBold"
-                                       Text="Проект" />
-                            <ComboBox x:Name="PlanningProjectComboBox"
-                                      Margin="0,6,0,14"
-                                      Padding="14,10"
-                                      Background="{StaticResource PanelSubtleBrush}"
-                                      BorderBrush="{StaticResource BorderBrushSoft}"
-                                      BorderThickness="1"
-                                      Foreground="{StaticResource TextPrimaryBrush}"
-                                      DisplayMemberPath="Title"
-                                      SelectedValuePath="Id" />
-
-                            <TextBlock FontWeight="SemiBold"
-                                       Text="Потенциальное время" />
+                                       Text="Дата и время" />
                             <Grid Margin="0,6,0,14">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
@@ -1584,15 +1866,18 @@
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
                                 <DatePicker x:Name="PlanningStartDatePicker"
+                                            SelectedDateChanged="PlanningStartDatePicker_OnSelectedDateChanged"
                                             Style="{StaticResource EditorDatePickerStyle}" />
                                 <TextBox x:Name="PlanningStartTimeTextBox"
                                          Grid.Column="2"
                                          Padding="10"
-                                         Text="19:00" />
+                                         Text="19:00"
+                                         TextChanged="PlanningEditorTextBox_OnTextChanged" />
                                 <TextBox x:Name="PlanningEndTimeTextBox"
                                          Grid.Column="4"
                                          Padding="10"
-                                         Text="21:00" />
+                                         Text="21:00"
+                                         TextChanged="PlanningEditorTextBox_OnTextChanged" />
                                 <Button Grid.Column="6"
                                         Padding="12,8"
                                         Background="{StaticResource PanelSubtleBrush}"
@@ -1603,6 +1888,8 @@
 
                             <CheckBox x:Name="PlanningAllDayCheckBox"
                                       Margin="0,0,0,14"
+                                      Checked="PlanningEditorField_OnChanged"
+                                      Unchecked="PlanningEditorField_OnChanged"
                                       Content="Весь день" />
 
                             <TextBlock FontWeight="SemiBold"
@@ -1613,7 +1900,8 @@
                                      AcceptsReturn="True"
                                      TextWrapping="Wrap"
                                      VerticalScrollBarVisibility="Auto"
-                                     Height="260" />
+                                     Height="260"
+                                     TextChanged="PlanningEditorTextBox_OnTextChanged" />
 
                             <WrapPanel Margin="0,0,0,16">
                                 <Button Padding="16,8"
@@ -1632,7 +1920,7 @@
                                         Click="MovePlanningItemToCalendarButton_OnClick"
                                         Content="В календарь"
                                         IsEnabled="False" />
-                                <Button x:Name="ArchivePlanningItemButton"
+                                <Button x:Name="PlanningDeleteOrArchiveButton"
                                         Padding="16,8"
                                         Margin="0,0,0,10"
                                         Background="{StaticResource DangerSurfaceBrush}"
@@ -1651,7 +1939,7 @@
                                 <TextBlock x:Name="PlanningStatusTextBlock"
                                            Foreground="{StaticResource TextSecondaryBrush}"
                                            TextWrapping="Wrap"
-                                           Text="Выберите заметку слева или создайте новую." />
+                                           Text="Выберите активность справа или создайте новую." />
                             </Border>
                         </StackPanel>
                     </ScrollViewer>
